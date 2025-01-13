@@ -51,20 +51,56 @@ func CreateTransformerStats(inputs map[string]SourceConfig) map[string][]profile
 		"transform_events_transformed",
 		"Number of events transformed (successful transactions) by the transformer",
 	)
+	flowsAdded := createTransformCounterVec(
+		"transform_flows_added",
+		"Number of added flows by the transformer",
+	)
+	dnsAdded := createTransformCounterVec(
+		"transform_dns_added",
+		"Number of added dns by the transformer",
+	)
+	httpAdded := createTransformCounterVec(
+		"transform_http_added",
+		"Number of added http by the transformer",
+	)
 	softfailedTxnFlows := createTransformCounterVec(
 		"transform_softfailedtxn_flows",
 		"Number of softfailed (to be retried) transactions of flows by the transformer",
+	)
+	softfailedTxnDns := createTransformCounterVec(
+		"transform_softfailedtxn_dns",
+		"Number of softfailed (to be retried) transactions of dns by the transformer",
+	)
+	softfailedTxnHttp := createTransformCounterVec(
+		"transform_softfailedtxn_http",
+		"Number of softfailed (to be retried) transactions of http by the transformer",
 	)
 	softfailedTxnHosts := createTransformCounterVec(
 		"transform_softfailedtxn_hosts",
 		"Number of softfailed (to be retried) transactions of hosts by the transformer",
 	)
+	softfailedTxnHostname := createTransformCounterVec(
+		"transform_softfailedtxn_hostname",
+		"Number of softfailed (inconsequential) transactions of hostname by the transformer",
+	)
+	softfailedTxnUserAgent := createTransformCounterVec(
+		"transform_softfailedtxn_useragent",
+		"Number of softfailed (inconsequential) transactions of user_agent by the transformer",
+	)
 	hardfailedTxnFlows := createTransformCounterVec(
 		"transform_hardfailedtxn_flows",
 		"Number of hardfailed (given up) transactions of flows by the transformer",
 	)
-	hardfailedTxnHosts := createTransformCounterVec(
-		"transform_hardfailedtxn_hosts",
+	hardfailedTxnDns := createTransformCounterVec(
+		"transform_hardfailedtxn_dns",
+		"Number of hardfailed (given up) transactions of dns by the transformer",
+	)
+	hardfailedTxnHttp := createTransformCounterVec(
+		"transform_hardfailedtxn_http",
+		"Number of hardfailed (given up) transactions of http by the transformer",
+	)
+	repeatedTxnHosts := createTransformCounterVec(
+		"transform_repeatedtxn_hosts",
 		"Number of hardfailed (given up) transactions of hosts by the transformer",
 	)
 
@@ -72,12 +108,21 @@ func CreateTransformerStats(inputs map[string]SourceConfig) map[string][]profile
 		for i := 0; i < int(source.WorkersNum); i++ {
 			thread_id := fmt.Sprintf("#%d", i)
 			ret[key] = append(ret[key], profiles.TransformerStats{
-				EventsProcessed:    eventsProcessed.WithLabelValues(key, thread_id),
-				EventsTransformed:  eventsTransformed.WithLabelValues(key, thread_id),
-				SoftfailedTxnFlows: softfailedTxnFlows.WithLabelValues(key, thread_id),
-				SoftfailedTxnHosts: softfailedTxnHosts.WithLabelValues(key, thread_id),
-				HardfailedTxnFlows: hardfailedTxnFlows.WithLabelValues(key, thread_id),
-				HardfailedTxnHosts: hardfailedTxnHosts.WithLabelValues(key, thread_id),
+				EventsProcessed:        eventsProcessed.WithLabelValues(key, thread_id),
+				EventsTransformed:      eventsTransformed.WithLabelValues(key, thread_id),
+				FlowsAdded:             flowsAdded.WithLabelValues(key, thread_id),
+				DnsAdded:               dnsAdded.WithLabelValues(key, thread_id),
+				HttpAdded:              httpAdded.WithLabelValues(key, thread_id),
+				SoftfailedTxnFlows:     softfailedTxnFlows.WithLabelValues(key, thread_id),
+				SoftfailedTxnDns:       softfailedTxnDns.WithLabelValues(key, thread_id),
+				SoftfailedTxnHttp:      softfailedTxnHttp.WithLabelValues(key, thread_id),
+				SoftfailedTxnHosts:     softfailedTxnHosts.WithLabelValues(key, thread_id),
+				SoftfailedTxnHostname:  softfailedTxnHostname.WithLabelValues(key, thread_id),
+				SoftfailedTxnUserAgent: softfailedTxnUserAgent.WithLabelValues(key, thread_id),
+				HardfailedTxnFlows:     hardfailedTxnFlows.WithLabelValues(key, thread_id),
+				HardfailedTxnDns:       hardfailedTxnDns.WithLabelValues(key, thread_id),
+				HardfailedTxnHttp:      hardfailedTxnHttp.WithLabelValues(key, thread_id),
+				RepeatedTxnHosts:       repeatedTxnHosts.WithLabelValues(key, thread_id),
 			})
 		}
 	}

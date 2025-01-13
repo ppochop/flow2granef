@@ -41,6 +41,7 @@ Host.user_agent: [uid] @reverse .
 
 
 FlowRec.id: string @upsert @index(exact) .
+FlowRec.community_id: string @index(hash) .
 FlowRec.originated_by: uid @reverse .
 FlowRec.received_by: uid @reverse .
 FlowRec.orig_port: int .
@@ -75,6 +76,7 @@ type Host {
 
 type FlowRec {
     FlowRec.id
+    FlowRec.community_id
     FlowRec.originated_by
     FlowRec.received_by
     FlowRec.produced

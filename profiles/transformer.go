@@ -9,9 +9,9 @@ import (
 )
 
 type Cache interface {
-	Set(string, string, time.Time)
-	Get(string) (string, bool)
-	AddOrGet(commId string, xid string, lastTs time.Time) (string, bool)
+	Set(commId string, xid string, lastTs time.Time)
+	Get(commId string, firstTs time.Time) (string, bool)
+	AddOrGet(commId string, xid string, firstTs time.Time, lastTs time.Time) (string, bool)
 }
 
 type CacheDuplCheck interface {
@@ -19,12 +19,21 @@ type CacheDuplCheck interface {
 }
 
 type TransformerStats struct {
-	EventsProcessed    prometheus.Counter
-	EventsTransformed  prometheus.Counter
-	SoftfailedTxnFlows prometheus.Counter
-	SoftfailedTxnHosts prometheus.Counter
-	HardfailedTxnFlows prometheus.Counter
-	HardfailedTxnHosts prometheus.Counter
+	EventsProcessed        prometheus.Counter
+	EventsTransformed      prometheus.Counter
+	FlowsAdded             prometheus.Counter
+	DnsAdded               prometheus.Counter
+	HttpAdded              prometheus.Counter
+	SoftfailedTxnFlows     prometheus.Counter
+	SoftfailedTxnDns       prometheus.Counter
+	SoftfailedTxnHttp      prometheus.Counter
+	SoftfailedTxnHosts     prometheus.Counter
+	SoftfailedTxnHostname  prometheus.Counter
+	SoftfailedTxnUserAgent prometheus.Counter
+	HardfailedTxnFlows     prometheus.Counter
+	HardfailedTxnDns       prometheus.Counter
+	HardfailedTxnHttp      prometheus.Counter
+	RepeatedTxnHosts       prometheus.Counter
 }
 
 type TransformerFactory func(Cache, *dgo.Dgraph, TransformerStats) Transformer

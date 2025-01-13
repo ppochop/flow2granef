@@ -7,7 +7,7 @@ import (
 	"github.com/dgraph-io/dgo/v240/protos/api"
 )
 
-func buildIpTxn(srcIp *netip.Addr, destIp *netip.Addr) *api.Request {
+func buildIpsTxn(srcIp *netip.Addr, destIp *netip.Addr) *api.Request {
 	query := fmt.Sprintf(`
 		query {
 			Orig as var(func: eq(Host.ip, "%s"))
@@ -35,5 +35,26 @@ func buildIpTxn(srcIp *netip.Addr, destIp *netip.Addr) *api.Request {
 	req := &api.Request{CommitNow: true}
 	req.Query = query
 	req.Mutations = []*api.Mutation{hMS, hMD}
+	return req
+}
+
+func buildIpTxn(ip *netip.Addr) *api.Request {
+	query := fmt.Sprintf(`
+		query {
+			Host as var(func: eq(Host.ip, "%s"))
+		}
+	`, ip.StringExpanded())
+	hostMutation := fmt.Sprintf(`
+		uid(Host) <dgraph.type> "Host" .
+		uid(Host) <Host.ip> "%s" .
+	`, ip.StringExpanded())
+	hM := &api.Mutation{
+		CommitNow: true,
+		SetNquads: []byte(hostMutation),
+		Cond:      `@if(eq(len(Host), 0))`,
+	}
+	req := &api.Request{CommitNow: true}
+	req.Query = query
+	req.Mutations = []*api.Mutation{hM}
 	return req
 }

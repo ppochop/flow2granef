@@ -1,14 +1,12 @@
 package suricata
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"regexp"
+	"strconv"
 
 	"github.com/dgraph-io/dgo/v240"
 	"github.com/ppochop/flow2granef/flowutils"
@@ -70,22 +68,15 @@ func (s *SuricataTransformer) handleFlow(ctx context.Context, event *SuricataEve
 	flow := event.GetGranefFlowRec("suricata")
 	ft := flow.GetFlowTuple()
 
-	commIdHash := s.commIdGen.Hash(ft)
-	commId := s.commIdGen.RenderBase64(commIdHash)
-	flowId := bytes.Buffer{}
-	err := binary.Write(&flowId, binary.LittleEndian, event.FlowId)
-	if err != nil {
-		return fmt.Errorf("failed to parse flowid %d into byte slice", event.FlowId)
-	}
-	flowIdHash := commIdHash.Sum(flowId.Bytes())
-	xid := base64.StdEncoding.EncodeToString(flowIdHash)
+	commId := s.commIdGen.CalcBase64(ft)
+	xid := strconv.FormatUint(event.FlowId, 10)
 	hit := false
 
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
-		xid, hit = s.cache.AddOrGet(commId, xid, flow.LastTs)
+		xid, hit = s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
 	default:
-		foundXid, hit := s.cache.Get(commId)
+		foundXid, hit := s.cache.Get(commId, flow.FirstTs)
 		if hit {
 			xid = foundXid
 		}

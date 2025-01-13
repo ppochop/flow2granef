@@ -35,6 +35,7 @@ type IpfixprobeFlow struct {
 	DnsTransactionID     *uint16     `json:"cesnet:DNSTransactionID"`
 	DnsQName             *string     `json:"cesnet:DNSName"`
 	DNSQType             *uint       `json:"cesnet:DNSQType"`
+	DNSAnswer            *string     `json:"cesnet:DNSRData"`
 	DNSTTL               *uint       `json:"cesnet:DNSRRTTL"`
 	HTTPUserAgent        *string     `json:"flowmon:httpUserAgent"`
 	HTTPUrl              *string     `json:"flowmon:httpUrl"`
@@ -42,8 +43,13 @@ type IpfixprobeFlow struct {
 }
 
 func (f *IpfixprobeFlow) GetGranefFlowRec(source string) *flowutils.FlowRec {
+	app := "?"
+	if f.IsDns() {
+		app = "dns"
+	}
+	shouldSwitchDir := f.IsDnsAnswer()
 	srcIp, destIp := f.GetIPs()
-	return &flowutils.FlowRec{
+	ret := &flowutils.FlowRec{
 		OrigIp:      srcIp,
 		OrigPort:    f.SrcPort,
 		RespIp:      destIp,
@@ -52,8 +58,30 @@ func (f *IpfixprobeFlow) GetGranefFlowRec(source string) *flowutils.FlowRec {
 		FirstTs:     f.GetFirstTs(),
 		LastTs:      f.GetLastTs(),
 		Protocol:    f.GetProto(),
-		App:         "?",
+		App:         app,
 		FlowSource:  source,
+	}
+	// ipfixprobe treats DNS answers in a uniflow fashion and can even export them earlier than the queries
+	if shouldSwitchDir {
+		ret.OrigIp = destIp
+		ret.OrigPort = f.DestPort
+		ret.RespIp = srcIp
+		ret.RespPort = f.SrcPort
+	}
+	return ret
+}
+
+func (f *IpfixprobeFlow) GetGranefDNSRec() *flowutils.DNSRec {
+	ipAnswer, err := netip.ParseAddr(*f.DNSAnswer)
+	if err != nil {
+		// Answer not an IP addr, throwing away
+		return nil
+	}
+	return &flowutils.DNSRec{
+		TransId: f.DnsTransactionID,
+		Query:   f.DnsQName,
+		Answer:  &ipAnswer,
+		TTL:     f.DNSTTL,
 	}
 }
 
@@ -77,7 +105,19 @@ func (f *IpfixprobeFlow) GetProto() ipproto.Protocol {
 	return ipproto.ProtocolFromName(f.Proto)
 }
 
+func (f *IpfixprobeFlow) IsDns() bool {
+	return f.DnsTransactionID != nil
+}
+
+func (f *IpfixprobeFlow) IsDnsAnswer() bool {
+	return f.DNSAnswer != nil && *f.DNSAnswer != ""
+}
+
 func (f *IpfixprobeFlow) GetIpfixFlushReason() flowutils.FlushReason {
+	if f.IsDns() {
+		// ipfixprobe treats DNS answers in a uniflow fashion and can even export them earlier than the queries
+		return flowutils.ActiveTimeout
+	}
 	switch f.FlowEndReason {
 	case 1:
 		return flowutils.PassiveTimeout

@@ -1,0 +1,36 @@
+package xidcache
+
+import (
+	"testing"
+	"time"
+)
+
+func TestOrdered(t *testing.T) {
+	c := New(10 * time.Minute)
+	commId := "1:DQJeVOCkTS9+fMa+rYPZ5vXu51A="
+	flowIdQ := "1046060674446557591"
+	ftsQ := time.Time{}
+	ftsQ.UnmarshalText([]byte("2013-02-26T22:02:56.271Z"))
+	atsQ := ftsQ
+	flowIdA := "13220912849057427144"
+	ftsA := time.Time{}
+	ftsA.UnmarshalText([]byte("2013-02-26T22:02:56.293Z"))
+	atsA := ftsA
+
+	var hit bool
+	xid1, hit := c.AddOrGet(commId, flowIdQ, ftsQ, atsQ)
+	if hit == true {
+		t.Fatalf("hit empty cache")
+	}
+	if xid1 != flowIdQ {
+		t.Fatalf("unexpected returned xid")
+	}
+
+	xid2, hit := c.AddOrGet(commId, flowIdA, ftsA, atsA)
+	if hit == false {
+		t.Fatalf("did not hit cache when should")
+	}
+	if xid2 != flowIdQ {
+		t.Fatalf("should have returned original xid")
+	}
+}

@@ -1,13 +1,10 @@
 package ipfix
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/dgraph-io/dgo/v240"
 	"github.com/ppochop/flow2granef/flowutils"
@@ -73,28 +70,33 @@ func (s *IpfixprobeTransformer) Handle(ctx context.Context, data []byte) error {
 	s.stats.EventsProcessed.Inc()
 	flow := event.GetGranefFlowRec("ipfixprobe")
 	ft := flow.GetFlowTuple()
-
-	commIdHash := s.commIdGen.Hash(ft)
-	commId := s.commIdGen.RenderBase64(commIdHash)
-	flowId := bytes.Buffer{}
-	err = binary.Write(&flowId, binary.LittleEndian, event.FlowId)
-	if err != nil {
-		return fmt.Errorf("failed to parse flowid %d into byte slice", event.FlowId)
-	}
-	flowIdHash := commIdHash.Sum(flowId.Bytes())
-	xid := base64.StdEncoding.EncodeToString(flowIdHash)
-	hit := false
-
+	commId := s.commIdGen.CalcBase64(ft)
+	flow.CommId = commId
+	xid := strconv.FormatUint(event.FlowId, 10)
+	var hit bool
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
-		xid, hit = s.cache.AddOrGet(commId, xid, flow.LastTs)
+		xid, hit = s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
 	default:
-		foundXid, hit := s.cache.Get(commId)
+		foundXid, hit := s.cache.Get(commId, flow.FirstTs)
 		if hit {
 			xid = foundXid
 		}
 	}
-	dgraphhelpers.HandleFlow(ctx, s.dgoClient, flow, xid, hit, &s.stats)
+	err = dgraphhelpers.HandleFlow(ctx, s.dgoClient, flow, xid, hit, &s.stats)
+	switch {
+	case event.IsDnsAnswer():
+		dns := event.GetGranefDNSRec()
+		if dns == nil {
+			//update metric?
+			return nil
+		}
+		err = dgraphhelpers.HandleDns(ctx, s.dgoClient, dns, xid, &s.stats)
+	case event.HTTPHost != nil:
+	}
+	if err == nil {
+		s.stats.EventsTransformed.Inc()
+	}
 	return nil
 }
 

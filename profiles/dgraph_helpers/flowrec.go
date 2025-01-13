@@ -13,9 +13,7 @@ func buildFlowRecTxn(f *flowutils.FlowRec, xid string, cacheHit bool) *api.Reque
 	if cacheHit {
 		query = fmt.Sprintf(`
 			query {
-				var(func: eq(FlowRec.id, "%s")) {
-					Flow as uid
-				}
+				Flow as var(func: eq(FlowRec.id, "%s"))
 			}
 		`, xid)
 		flowMutations = fmt.Sprintf(`
@@ -27,20 +25,15 @@ func buildFlowRecTxn(f *flowutils.FlowRec, xid string, cacheHit bool) *api.Reque
 	} else {
 		query = fmt.Sprintf(`
 			query {
-				var(func: eq(Host.ip, "%s")) {
-					Orig as uid
-				}
-				var(func: eq(Host.ip, "%s")) {
-					Resp as uid
-				}
-				var(func: eq(FlowRec.id, "%s")) {
-					Flow as uid
-				}
+				Orig as var(func: eq(Host.ip, "%s"))
+				Resp as var(func: eq(Host.ip, "%s"))
+				Flow as var(func: eq(FlowRec.id, "%s"))
 			}
 		`, f.OrigIp.StringExpanded(), f.RespIp.StringExpanded(), xid)
 		flowMutations = fmt.Sprintf(`
 			uid(Flow) <dgraph.type> "FlowRec" .
 			uid(Flow) <FlowRec.id> "%s" .
+			uid(Flow) <FlowRec.community_id> "%s" .
 			uid(Flow) <FlowRec.originated_by> uid(Orig) .
 			uid(Flow) <FlowRec.received_by> uid(Resp) .
 			uid(Flow) <FlowRec.orig_port> "%d" .
@@ -51,7 +44,7 @@ func buildFlowRecTxn(f *flowutils.FlowRec, xid string, cacheHit bool) *api.Reque
 			uid(Flow) <FlowRec.app> "%s" .
 			uid(Flow) <FlowRec.flush_reason> "%s" .
 			uid(Flow) <FlowRec.flow_source> "%s" .
-		`, xid, f.OrigPort, f.RespPort, f.FirstTs, f.LastTs, f.Protocol.GetName(), f.App, f.FlushReason, f.FlowSource)
+		`, xid, f.CommId, f.OrigPort, f.RespPort, f.FirstTs, f.LastTs, f.Protocol.GetName(), f.App, f.FlushReason, f.FlowSource)
 	}
 	fMu := &api.Mutation{CommitNow: true}
 	req := &api.Request{CommitNow: true}

@@ -11,30 +11,53 @@ import (
 )
 
 type Protocol struct {
-	num  uint8
+	num  uint16
 	name string
 }
 
+type mapNum map[uint16]string
+type mapName map[string]uint16
+
+var rangeRE *regexp.Regexp
+
 //go:embed protocol-numbers-1.csv
 var protoNumbers string
-var protoMappingNum map[uint8]string
-var protoMappingName map[string]uint8
+var protoMappingNum mapNum
+var protoMappingName mapName
+
+//go:embed dns-parameters-4.csv
+var rrtypeNumbers string
+var rrtypeMappingNum mapNum
+var rrtypeMappingName mapName
 
 func init() {
-	re, _ := regexp.Compile(`^(\d)+-(\d)+$`)
-	protoMappingNum = map[uint8]string{}
-	protoMappingName = map[string]uint8{}
-	r := csv.NewReader(strings.NewReader(protoNumbers))
-	records, err := r.ReadAll()
+	rangeRE, _ = regexp.Compile(`^(\d)+-(\d)+$`)
+	protoMappingNum = mapNum{}
+	protoMappingName = mapName{}
+	rrtypeMappingNum = mapNum{}
+	rrtypeMappingName = mapName{}
+	rIp := csv.NewReader(strings.NewReader(protoNumbers))
+	rRrtype := csv.NewReader(strings.NewReader(rrtypeNumbers))
+	ipRecords, err := rIp.ReadAll()
 	if err != nil {
-		slog.Error("could not read protocol mappings", "error", err)
+		slog.Error("could not read IP protocol mappings", "error", err)
 		panic(1)
 	}
-	for _, rec := range records[1:] {
-		num, err := strconv.ParseUint(rec[0], 10, 8)
+	rrtypeRecords, err := rRrtype.ReadAll()
+	if err != nil {
+		slog.Error("could not read DNS RRTYPE mappings", "error", err)
+		panic(1)
+	}
+	ParseProtocolCSV(ipRecords[1:], 0, 1, protoMappingNum, protoMappingName)
+	ParseProtocolCSV(rrtypeRecords[1:], 1, 0, rrtypeMappingNum, rrtypeMappingName)
+}
+
+func ParseProtocolCSV(records [][]string, numCol int, nameCol int, mNum mapNum, mName mapName) {
+	for _, rec := range records {
+		num, err := strconv.ParseUint(rec[numCol], 10, 16)
 		if err != nil {
-			tryRange := re.FindStringSubmatch(rec[0]) // maybe it's a range?
-			if tryRange == nil {                      // not a range
+			tryRange := rangeRE.FindStringSubmatch(rec[numCol]) // maybe it's a range?
+			if tryRange == nil {                                // not a range
 				slog.Error("could not parse protocol number", "error", err)
 				panic(1)
 			}
@@ -52,24 +75,41 @@ func init() {
 
 			// register the range
 			for i := fromNum; i <= toNum; i++ {
-				name := rec[1]
+				name := rec[nameCol]
 				if name == "" {
 					name = fmt.Sprintf("UNKNOWN(%d)", num)
 				}
 				nameUpper := strings.ToUpper(name)
-				protoMappingNum[uint8(num)] = nameUpper
-				protoMappingName[nameUpper] = uint8(fromNum)
+				mNum[uint16(num)] = nameUpper
+				mName[nameUpper] = uint16(fromNum)
 			}
 			// registered the whole range, move on
 			continue
 		}
-		name := rec[1]
+		name := rec[nameCol]
 		if name == "" {
 			name = fmt.Sprintf("UNKNOWN(%d)", num)
 		}
 		nameUpper := strings.ToUpper(name)
-		protoMappingNum[uint8(num)] = nameUpper
-		protoMappingName[name] = uint8(num)
+		mNum[uint16(num)] = nameUpper
+		mName[name] = uint16(num)
+	}
+}
+
+func RRTypeFromName(name string) Protocol {
+	nameUpper := strings.ToUpper(name)
+	v, found := rrtypeMappingName[nameUpper]
+	if !found {
+		// TODO log
+		return Protocol{
+			name: nameUpper,
+			num:  65535,
+		}
+	}
+
+	return Protocol{
+		name: nameUpper,
+		num:  v,
 	}
 }
 
@@ -90,7 +130,22 @@ func ProtocolFromName(name string) Protocol {
 	}
 }
 
-func ProtocolFromNum(num uint8) Protocol {
+func RRTypeFromNum(num uint16) Protocol {
+	v, found := rrtypeMappingNum[num]
+	if !found {
+		return Protocol{
+			name: fmt.Sprintf("UNKNOWN(%d)", num),
+			num:  num,
+		}
+	}
+
+	return Protocol{
+		name: v,
+		num:  num,
+	}
+}
+
+func ProtocolFromNum(num uint16) Protocol {
 	v, found := protoMappingNum[num]
 	if !found {
 		return Protocol{
@@ -105,7 +160,7 @@ func ProtocolFromNum(num uint8) Protocol {
 	}
 }
 
-func (p *Protocol) GetNum() uint8 {
+func (p *Protocol) GetNum() uint16 {
 	return p.num
 }
 

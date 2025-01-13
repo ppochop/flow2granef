@@ -8,16 +8,8 @@ import (
 	"github.com/satta/gommunityid"
 )
 
-type FlushReason string
-
-const (
-	ActiveTimeout  FlushReason = "a"
-	PassiveTimeout FlushReason = "p"
-	Finished       FlushReason = "f"
-	Unknown        FlushReason = "?"
-)
-
 type FlowRec struct {
+	CommId      string
 	OrigIp      *netip.Addr
 	OrigPort    uint16
 	RespIp      *netip.Addr
@@ -31,6 +23,6 @@ type FlowRec struct {
 }
 
 func (f *FlowRec) GetFlowTuple() gommunityid.FlowTuple {
-	ft := gommunityid.MakeFlowTuple(f.OrigIp.AsSlice(), f.RespIp.AsSlice(), f.OrigPort, f.RespPort, f.Protocol.GetNum())
+	ft := gommunityid.MakeFlowTuple(f.OrigIp.AsSlice(), f.RespIp.AsSlice(), f.OrigPort, f.RespPort, uint8(f.Protocol.GetNum())).InOrder()
 	return ft
 }

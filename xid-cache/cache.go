@@ -10,6 +10,7 @@ This "freshness" of the active timeout is validated before returning the xid of 
 */
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -28,7 +29,8 @@ type IdCacheEntry struct {
 func New(timeout time.Duration) *IdCache {
 	cache := cache.New(timeout, 2*timeout)
 	return &IdCache{
-		cache: cache,
+		cache:   cache,
+		timeout: timeout,
 	}
 }
 
@@ -48,20 +50,19 @@ func (c *IdCache) Set(commId string, xid string, lastTs time.Time) {
 	c.cache.Set(commId, &entry, cache.DefaultExpiration)
 }
 
-func (c *IdCache) Get(commId string) (string, bool) {
+func (c *IdCache) Get(commId string, firstTs time.Time) (string, bool) {
 	res, found := c.cache.Get(commId)
 	if !found {
 		return "", false
 	}
-	now := time.Now().Round(time.Second)
 	entry := res.(*IdCacheEntry)
-	if now.After(entry.timeoutThreshold) {
+	if firstTs.Round(time.Second).After(entry.timeoutThreshold) {
 		return "", false
 	}
 	return entry.xid, true
 }
 
-func (c *IdCache) AddOrGet(commId string, xid string, lastTs time.Time) (string, bool) {
+func (c *IdCache) AddOrGet(commId string, xid string, firstTs time.Time, lastTs time.Time) (string, bool) {
 	err := c.Add(commId, xid, lastTs)
 
 	// Cache miss, use your provided xid
@@ -70,8 +71,13 @@ func (c *IdCache) AddOrGet(commId string, xid string, lastTs time.Time) (string,
 	}
 
 	// Cache hit, get the xid from cache
-	xidFromCache, _ := c.Get(commId)
+	xidFromCache, hit := c.Get(commId, firstTs)
 
+	if !hit {
+		// wtf
+		slog.Error("Failed to both add and get xid from cache", "xid", xid, "comm_id", commId, "fromCache", xidFromCache)
+		return xid, false
+	}
 	// Should "update" the cache with new timeout
 	// NOT thread-safe, should probably be reworked
 	// but the risk is acceptable for now

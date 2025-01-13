@@ -6,7 +6,6 @@ Flow records made from Zeek's conn log will use Zeek's uid as xid in dgraph.
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -70,18 +69,16 @@ func (s *ZeekTransformer) handleFlow(ctx context.Context, event *ZeekConn) error
 	flow := event.GetGranefFlowRec("zeek")
 	ft := flow.GetFlowTuple()
 
-	commIdHash := s.commIdGen.Hash(ft)
-	commId := s.commIdGen.RenderBase64(commIdHash)
-
-	flowIdHash := commIdHash.Sum([]byte(event.Uid))
-	xid := base64.StdEncoding.EncodeToString(flowIdHash)
+	commId := s.commIdGen.CalcBase64(ft)
+	flow.CommId = commId
+	xid := event.Uid
 	hit := false
 
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
-		xid, hit = s.cache.AddOrGet(commId, xid, flow.LastTs)
+		xid, hit = s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
 	default:
-		foundXid, hit := s.cache.Get(commId)
+		foundXid, hit := s.cache.Get(commId, flow.FirstTs)
 		if hit {
 			xid = foundXid
 		}

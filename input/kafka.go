@@ -39,7 +39,7 @@ func InitKafkaConsumer(config InputConfig, stats InputStats) (Input, error) {
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": kC.BootstrapServers,
 		"group.id":          kC.GroupId,
-		"auto.offset.reset": "latest",
+		//"auto.offset.reset": "latest",
 	})
 	if err != nil {
 		return nil, err
