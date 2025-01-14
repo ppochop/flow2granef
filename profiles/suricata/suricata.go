@@ -69,6 +69,7 @@ func (s *SuricataTransformer) handleFlow(ctx context.Context, event *SuricataEve
 	ft := flow.GetFlowTuple()
 
 	commId := s.commIdGen.CalcBase64(ft)
+	flow.CommId = commId
 	xid := strconv.FormatUint(event.FlowId, 10)
 	hit := false
 
@@ -85,6 +86,21 @@ func (s *SuricataTransformer) handleFlow(ctx context.Context, event *SuricataEve
 	return nil
 }
 
+func (s *SuricataTransformer) handleDns(ctx context.Context, event *SuricataEve) error {
+	if len(event.Dns.Answers) == 0 {
+		return nil
+	}
+	dns := event.Dns.GetGranefDNSRec()
+	flow := event.GetGranefMiminalFlowRec("suricata")
+	ft := flow.GetFlowTuple()
+
+	commId := s.commIdGen.CalcBase64(ft)
+	flow.CommId = commId
+	xid := strconv.FormatUint(event.FlowId, 10)
+
+	return dgraphhelpers.HandleDnsWithFlowPlaceholder(ctx, s.dgoClient, dns, xid, &s.stats)
+}
+
 func (s *SuricataTransformer) Handle(ctx context.Context, data []byte) error {
 	event := SuricataEve{}
 	err := json.Unmarshal(data, &event)
@@ -94,11 +110,18 @@ func (s *SuricataTransformer) Handle(ctx context.Context, data []byte) error {
 	s.stats.EventsProcessed.Inc()
 	switch event.DetermineEventType() {
 	case SuricataEventFlow:
-		return s.handleFlow(ctx, &event)
+		err = s.handleFlow(ctx, &event)
+	case SuricataEventDns:
+		err = s.handleDns(ctx, &event)
+	case SuricataEventHttp:
+		return nil
 	default:
 		return fmt.Errorf("unsupported suricata event type: %s", event.EventType)
 	}
-
+	if err == nil {
+		s.stats.EventsTransformed.Inc()
+	}
+	return err
 }
 
 func (s *SuricataTransformerDuplCheck) Handle(ctx context.Context, data []byte) error {

@@ -64,6 +64,17 @@ func (s *SuricataEve) GetGranefFlowRec(source string) *flowutils.FlowRec {
 	}
 }
 
+func (s *SuricataEve) GetGranefMiminalFlowRec(source string) *flowutils.FlowRec {
+	return &flowutils.FlowRec{
+		OrigIp:     &s.SrcIp,
+		OrigPort:   s.SrcPort,
+		RespIp:     &s.DestIp,
+		RespPort:   s.DestPort,
+		Protocol:   ipproto.ProtocolFromName(s.Proto),
+		FlowSource: source,
+	}
+}
+
 func (z *SuricataTransformer) GetSuricataTimestamp(ts string) time.Time {
 	ts2 := z.reTime.ReplaceAllString(ts, "$1:$2")
 	ret := time.Time{}

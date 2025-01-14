@@ -80,8 +80,8 @@ func (f *IpfixprobeFlow) GetGranefDNSRec() *flowutils.DNSRec {
 	return &flowutils.DNSRec{
 		TransId: f.DnsTransactionID,
 		Query:   f.DnsQName,
-		Answer:  &ipAnswer,
-		TTL:     f.DNSTTL,
+		Answer:  []*netip.Addr{&ipAnswer},
+		TTL:     []*uint{f.DNSTTL},
 	}
 }
 

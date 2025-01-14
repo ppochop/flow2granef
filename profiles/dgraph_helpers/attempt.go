@@ -60,7 +60,6 @@ func HandleFlow(ctx context.Context, dC *dgo.Dgraph, f *flowutils.FlowRec, xid s
 		err := AttemptHostsTxn(ctx, dC, f.OrigIp, f.RespIp, stats.SoftfailedTxnHosts)
 		if err != nil {
 			stats.RepeatedTxnHosts.Inc()
-			slog.Warn("Hosts attempt had to be retried", "err", err, "ip1", f.OrigIp, "ip2", f.RespIp)
 		}
 	}
 
@@ -78,8 +77,10 @@ func HandleDns(ctx context.Context, dC *dgo.Dgraph, d *flowutils.DNSRec, flowXid
 	reqHostname := buildHostnameTxn(d.Query)
 	AttemptTxn(ctx, dC, reqHostname, true, stats.SoftfailedTxnHostname, 1)
 
-	reqHost := buildIpTxn(d.Answer)
-	AttemptTxn(ctx, dC, reqHost, true, stats.SoftfailedTxnHosts, 1)
+	for _, ip := range d.Answer {
+		reqHost := buildIpTxn(ip)
+		AttemptTxn(ctx, dC, reqHost, true, stats.SoftfailedTxnHosts, 1)
+	}
 
 	dnsXid := fmt.Sprintf("%s%d", flowXid, *d.TransId)
 	reqDns := BuildDnsTxn(d, flowXid, dnsXid)
@@ -91,4 +92,11 @@ func HandleDns(ctx context.Context, dC *dgo.Dgraph, d *flowutils.DNSRec, flowXid
 	}
 	stats.DnsAdded.Inc()
 	return nil
+}
+
+func HandleDnsWithFlowPlaceholder(ctx context.Context, dC *dgo.Dgraph, d *flowutils.DNSRec, flowXid string, stats *profiles.TransformerStats) error {
+	reqFlowPlaceholder := buildFlowRecPlaceholderTxn(flowXid)
+	AttemptTxn(ctx, dC, reqFlowPlaceholder, true, stats.SoftfailedTxnFlows, 1)
+
+	return HandleDns(ctx, dC, d, flowXid, stats)
 }

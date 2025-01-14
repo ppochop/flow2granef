@@ -35,6 +35,8 @@ type ZeekConnLimited struct {
 	OrigPort uint16     `json:"id.orig_p"`
 	RespIp   netip.Addr `json:"id.resp_h"`
 	RespPort uint16     `json:"id.resp_p"`
+	Proto    string     `json:"proto"`
+	Service  string     `json:"service"`
 }
 
 func (z *ZeekTransformer) ZeekHandleConn(data []byte) error {
@@ -62,7 +64,23 @@ func (z *ZeekConn) GetGranefFlowRec(source string) *flowutils.FlowRec {
 	}
 }
 
+func (z *ZeekConnLimited) GetGranefFlowRec(source string) *flowutils.FlowRec {
+	return &flowutils.FlowRec{
+		OrigIp:     &z.OrigIp,
+		OrigPort:   z.OrigPort,
+		RespIp:     &z.RespIp,
+		RespPort:   z.RespPort,
+		Protocol:   ipproto.ProtocolFromName(z.Proto),
+		App:        z.Service,
+		FlowSource: source,
+	}
+}
+
 func (z *ZeekConn) GetFirstTs() time.Time {
+	return time.UnixMilli(int64(z.Ts * 1000)).UTC()
+}
+
+func (z *ZeekConnLimited) GetFirstTs() time.Time {
 	return time.UnixMilli(int64(z.Ts * 1000)).UTC()
 }
 

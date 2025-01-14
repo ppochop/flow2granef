@@ -7,6 +7,27 @@ import (
 	"github.com/ppochop/flow2granef/flowutils"
 )
 
+func buildFlowRecPlaceholderTxn(xid string) *api.Request {
+	query := fmt.Sprintf(`
+		query {
+			Flow as var(func: eq(FlowRec.id, "%s"))
+		}
+	`, xid)
+	mutation := fmt.Sprintf(`
+		uid(Flow) <dgraph.type> "FlowRec" .
+		uid(Flow) <FlowRec.id> "%s" .
+	`, xid)
+	mut := &api.Mutation{
+		CommitNow: true,
+		SetNquads: []byte(mutation),
+	}
+	return &api.Request{
+		Query:     query,
+		CommitNow: true,
+		Mutations: []*api.Mutation{mut},
+	}
+}
+
 func buildFlowRecTxn(f *flowutils.FlowRec, xid string, cacheHit bool) *api.Request {
 	var query string
 	var flowMutations string

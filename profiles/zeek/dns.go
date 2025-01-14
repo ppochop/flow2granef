@@ -1,27 +1,33 @@
 package zeek
 
-import "encoding/json"
+import (
+	"net/netip"
+
+	"github.com/ppochop/flow2granef/flowutils"
+)
 
 type ZeekDns struct {
-	TransId uint16   `json:"trans_id"`
-	Query   *string  `json:"query"`
-	Answers []string `json:"answers"`
-	TTLs    []int    `json:"ttls"`
-	QType   *string  `json:"qtype_name"`
-	RCode   *string  `json:"rcode_name"`
+	TransId uint16    `json:"trans_id"`
+	Query   *string   `json:"query"`
+	Answers []string  `json:"answers"`
+	TTLs    []float64 `json:"ttls"`
+	QType   *string   `json:"qtype_name"`
+	RCode   *string   `json:"rcode_name"`
 }
 
-func (z *ZeekTransformer) ZeekHandleDns(data []byte) error {
-	connLimited := ZeekConnLimited{}
-	dns := ZeekDns{}
-	err := json.Unmarshal(data, &connLimited)
-	if err != nil {
-		return err
+func (z *ZeekDns) GetGranefDNSRec() *flowutils.DNSRec {
+	ret := &flowutils.DNSRec{
+		TransId: &z.TransId,
+		Query:   z.Query,
 	}
-	err = json.Unmarshal(data, &dns)
-	if err != nil {
-		return err
+	for i, ansStr := range z.Answers {
+		ip, err := netip.ParseAddr(ansStr)
+		if err != nil {
+			continue
+		}
+		ret.Answer = append(ret.Answer, &ip)
+		TTLuint := uint(z.TTLs[i])
+		ret.TTL = append(ret.TTL, &TTLuint)
 	}
-	//send to granef
-	return nil
+	return ret
 }

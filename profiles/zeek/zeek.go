@@ -87,24 +87,63 @@ func (s *ZeekTransformer) handleFlow(ctx context.Context, event *ZeekConn) error
 	return nil
 }
 
+func (s *ZeekTransformer) handleDns(ctx context.Context, eventDns *ZeekDns, eventConnL *ZeekConnLimited) error {
+	dns := eventDns.GetGranefDNSRec()
+	if len(dns.Answer) == 0 {
+		return nil
+	}
+	flow := eventConnL.GetGranefFlowRec("zeek")
+	ft := flow.GetFlowTuple()
+
+	commId := s.commIdGen.CalcBase64(ft)
+	flow.CommId = commId
+	xid := eventConnL.Uid
+
+	// pointless if we know the flow comes from zeek
+	// but a necessary building block for inter-source integration (flow from ipfix, dns from zeek)
+	//xid, hit := s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
+
+	return dgraphhelpers.HandleDnsWithFlowPlaceholder(ctx, s.dgoClient, dns, xid, &s.stats)
+}
+
 func (z *ZeekTransformer) Handle(ctx context.Context, data []byte) error {
 	zeekBase := ZeekBase{}
 	err := json.Unmarshal(data, &zeekBase)
 	if err != nil {
 		return err
 	}
+	z.stats.EventsProcessed.Inc()
 	zType := zeekBase.decideType()
 	switch zType {
 	case ZeekLogConn:
 		event := ZeekConn{}
-		err := json.Unmarshal(data, &event)
+		err = json.Unmarshal(data, &event)
 		if err != nil {
 			return err
 		}
-		return z.handleFlow(ctx, &event)
+		err = z.handleFlow(ctx, &event)
+	case ZeekLogDns:
+		eventDns := ZeekDns{}
+		eventConnL := ZeekConnLimited{}
+		err = json.Unmarshal(data, &eventDns)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(data, &eventConnL)
+		if err != nil {
+			return err
+		}
+		err = z.handleDns(ctx, &eventDns, &eventConnL)
+
+	case ZeekLogHttp:
+		return nil
 	default:
-		return fmt.Errorf("unsupported zeek event type")
+		return fmt.Errorf("unsupported zeek event type for uid %s", zeekBase.Uid)
 	}
+	if err == nil {
+		z.stats.EventsTransformed.Inc()
+	}
+	return err
 }
 
 func (z *ZeekTransformerDuplCheck) Handle(ctx context.Context, data []byte) error {
