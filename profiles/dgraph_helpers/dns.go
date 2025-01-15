@@ -13,9 +13,9 @@ func buildDnsAux(d *flowutils.DNSRec) (qAux string, dMAux string, hMAux string) 
 	dnsMutAux := make([]string, len(d.Answer))
 	hostMutAux := make([]string, len(d.Answer))
 	for i, ip := range d.Answer {
-		hostQueryAux[i] = fmt.Sprintf("\t\t\tHost_%d as var(func: eq(Host.ip, \"%s\"))", i, ip.StringExpanded())
-		dnsMutAux[i] = fmt.Sprintf("\t\tuid(Dns) <DNS.answer> uid(Host_%d) .", i)
-		hostMutAux[i] = fmt.Sprintf("uid(Host_%d) <Host.hostname> uid(Hostname) .", i)
+		hostQueryAux[i] = fmt.Sprintf("\t\t\tHost%d as var(func: eq(Host.ip, \"%s\"))", i, ip.StringExpanded())
+		dnsMutAux[i] = fmt.Sprintf("\t\tuid(Dns) <DNS.answer> uid(Host%d) .", i)
+		hostMutAux[i] = fmt.Sprintf("uid(Host%d) <Host.hostname> uid(Hostname) .", i)
 	}
 	ret0 := strings.Join(hostQueryAux, "\n")
 	ret1 := strings.Join(dnsMutAux, "\n")
@@ -42,14 +42,19 @@ func BuildDnsTxn(d *flowutils.DNSRec, flowXid string, dnsXid string) *api.Reques
 	`, dnsXid, *d.TransId, dMAux)
 	hostMutations := hMAux
 	flowMutations := `uid(Flow) <FlowRec.produced> uid(Dns) .`
-	dMu := &api.Mutation{CommitNow: true}
-	hMu := &api.Mutation{CommitNow: true}
-	fMu := &api.Mutation{CommitNow: true}
-	req := &api.Request{CommitNow: true}
-	req.Query = query
-	dMu.SetNquads = []byte(dnsMutations)
-	hMu.SetNquads = []byte(hostMutations)
-	fMu.SetNquads = []byte(flowMutations)
-	req.Mutations = []*api.Mutation{dMu, hMu, fMu}
+	dMu := &api.Mutation{
+		SetNquads: []byte(dnsMutations),
+	}
+	hMu := &api.Mutation{
+		SetNquads: []byte(hostMutations),
+	}
+	fMu := &api.Mutation{
+		SetNquads: []byte(flowMutations),
+	}
+	req := &api.Request{
+		Query:     query,
+		Mutations: []*api.Mutation{dMu, hMu, fMu},
+		CommitNow: true,
+	}
 	return req
 }

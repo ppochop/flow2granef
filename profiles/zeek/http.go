@@ -1,6 +1,8 @@
 package zeek
 
-import "encoding/json"
+import (
+	"github.com/ppochop/flow2granef/flowutils"
+)
 
 type ZeekHttp struct {
 	Host      string `json:"host"`
@@ -8,17 +10,10 @@ type ZeekHttp struct {
 	UserAgent string `json:"user_agent"`
 }
 
-func (z *ZeekTransformer) ZeekHandleHttp(data []byte) error {
-	connLimited := ZeekConnLimited{}
-	http := ZeekHttp{}
-	err := json.Unmarshal(data, &connLimited)
-	if err != nil {
-		return err
+func (z *ZeekHttp) GetGranefHTTPRec() *flowutils.HTTPRec {
+	return &flowutils.HTTPRec{
+		Hostname:  &z.Host,
+		Url:       &z.Uri,
+		UserAgent: &z.UserAgent,
 	}
-	err = json.Unmarshal(data, &http)
-	if err != nil {
-		return err
-	}
-	//send to granef
-	return nil
 }

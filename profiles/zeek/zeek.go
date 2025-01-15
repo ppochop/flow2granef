@@ -12,6 +12,7 @@ import (
 
 	"github.com/dgraph-io/dgo/v240"
 	"github.com/ppochop/flow2granef/flowutils"
+	ipproto "github.com/ppochop/flow2granef/ip-proto"
 	"github.com/ppochop/flow2granef/profiles"
 	dgraphhelpers "github.com/ppochop/flow2granef/profiles/dgraph_helpers"
 	"github.com/satta/gommunityid"
@@ -65,15 +66,16 @@ func PreHandle(data []byte) (uint32, error) {
 	return id, nil
 }
 
-func (s *ZeekTransformer) handleFlow(ctx context.Context, event *ZeekConn) error {
+func (z *ZeekTransformer) handleFlow(ctx context.Context, event *ZeekConn) error {
 	flow := event.GetGranefFlowRec("zeek")
 	ft := flow.GetFlowTuple()
 
-	commId := s.commIdGen.CalcBase64(ft)
+	commId := z.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := event.Uid
 	hit := false
 
+	/* Active timeouts relevant only for sensor restarts, needs a bit more thought
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
 		xid, hit = s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
@@ -83,11 +85,12 @@ func (s *ZeekTransformer) handleFlow(ctx context.Context, event *ZeekConn) error
 			xid = foundXid
 		}
 	}
-	dgraphhelpers.HandleFlow(ctx, s.dgoClient, flow, xid, hit, &s.stats)
+	*/
+	dgraphhelpers.HandleFlow(ctx, z.dgoClient, flow, xid, hit, &z.stats)
 	return nil
 }
 
-func (s *ZeekTransformer) handleDns(ctx context.Context, eventDns *ZeekDns, eventConnL *ZeekConnLimited) error {
+func (z *ZeekTransformer) handleDns(ctx context.Context, eventDns *ZeekDns, eventConnL *ZeekConnLimited) error {
 	dns := eventDns.GetGranefDNSRec()
 	if len(dns.Answer) == 0 {
 		return nil
@@ -95,7 +98,7 @@ func (s *ZeekTransformer) handleDns(ctx context.Context, eventDns *ZeekDns, even
 	flow := eventConnL.GetGranefFlowRec("zeek")
 	ft := flow.GetFlowTuple()
 
-	commId := s.commIdGen.CalcBase64(ft)
+	commId := z.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := eventConnL.Uid
 
@@ -103,7 +106,22 @@ func (s *ZeekTransformer) handleDns(ctx context.Context, eventDns *ZeekDns, even
 	// but a necessary building block for inter-source integration (flow from ipfix, dns from zeek)
 	//xid, hit := s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
 
-	return dgraphhelpers.HandleDnsWithFlowPlaceholder(ctx, s.dgoClient, dns, xid, &s.stats)
+	return dgraphhelpers.HandleDnsWithFlowPlaceholder(ctx, z.dgoClient, dns, xid, &z.stats)
+}
+
+func (z *ZeekTransformer) handleHttp(ctx context.Context, eventHttp *ZeekHttp, eventConnL *ZeekConnLimited) error {
+	http := eventHttp.GetGranefHTTPRec()
+	flow := eventConnL.GetGranefFlowRec("zeek")
+	flow.Protocol = ipproto.ProtocolFromName("tcp") // Zeek HTTP records are missing the protocol field
+	ft := flow.GetFlowTuple()
+	http.ClientIp = flow.OrigIp
+	http.ServerIp = flow.RespIp
+
+	commId := z.commIdGen.CalcBase64(ft)
+	flow.CommId = commId
+	xid := eventConnL.Uid
+
+	return dgraphhelpers.HandleHttpWithFlowPlaceholder(ctx, z.dgoClient, http, xid, &z.stats)
 }
 
 func (z *ZeekTransformer) Handle(ctx context.Context, data []byte) error {
@@ -136,7 +154,18 @@ func (z *ZeekTransformer) Handle(ctx context.Context, data []byte) error {
 		err = z.handleDns(ctx, &eventDns, &eventConnL)
 
 	case ZeekLogHttp:
-		return nil
+		eventHttp := ZeekHttp{}
+		eventConnL := ZeekConnLimited{}
+		err = json.Unmarshal(data, &eventHttp)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(data, &eventConnL)
+		if err != nil {
+			return err
+		}
+		err = z.handleHttp(ctx, &eventHttp, &eventConnL)
+
 	default:
 		return fmt.Errorf("unsupported zeek event type for uid %s", zeekBase.Uid)
 	}

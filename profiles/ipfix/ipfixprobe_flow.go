@@ -85,6 +85,20 @@ func (f *IpfixprobeFlow) GetGranefDNSRec() *flowutils.DNSRec {
 	}
 }
 
+func (f *IpfixprobeFlow) GetGranefHTTPRec() *flowutils.HTTPRec {
+	switch {
+	case *f.HTTPHost == "":
+		return nil
+	case *f.HTTPUrl == "":
+		return nil
+	}
+	return &flowutils.HTTPRec{
+		Hostname:  f.HTTPHost,
+		Url:       f.HTTPUrl,
+		UserAgent: f.HTTPUserAgent,
+	}
+}
+
 func (f *IpfixprobeFlow) GetFirstTs() time.Time {
 	return f.FlowStartMs.UTC()
 }

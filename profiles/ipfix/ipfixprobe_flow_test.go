@@ -12,4 +12,8 @@ func TestFlowParse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to parse flow")
 	}
+	isDnsAnswer := flow.IsDnsAnswer()
+	if isDnsAnswer {
+		t.Fatalf("Falsely determined to be DNS answer")
+	}
 }

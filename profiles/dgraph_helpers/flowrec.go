@@ -18,8 +18,8 @@ func buildFlowRecPlaceholderTxn(xid string) *api.Request {
 		uid(Flow) <FlowRec.id> "%s" .
 	`, xid)
 	mut := &api.Mutation{
-		CommitNow: true,
 		SetNquads: []byte(mutation),
+		Cond:      `@if(eq(len(Flow), 0))`,
 	}
 	return &api.Request{
 		Query:     query,

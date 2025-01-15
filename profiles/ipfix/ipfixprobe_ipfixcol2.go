@@ -73,6 +73,7 @@ func (s *IpfixprobeTransformer) Handle(ctx context.Context, data []byte) error {
 	commId := s.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := strconv.FormatUint(event.FlowId, 10)
+
 	var hit bool
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
@@ -88,11 +89,17 @@ func (s *IpfixprobeTransformer) Handle(ctx context.Context, data []byte) error {
 	case event.IsDnsAnswer():
 		dns := event.GetGranefDNSRec()
 		if dns == nil {
-			//update metric?
 			return nil
 		}
 		err = dgraphhelpers.HandleDns(ctx, s.dgoClient, dns, xid, &s.stats)
 	case event.HTTPHost != nil:
+		http := event.GetGranefHTTPRec()
+		if http == nil {
+			return nil
+		}
+		http.ClientIp = flow.OrigIp
+		http.ServerIp = flow.RespIp
+		err = dgraphhelpers.HandleHttp(ctx, s.dgoClient, http, xid, &s.stats)
 	}
 	if err == nil {
 		s.stats.EventsTransformed.Inc()

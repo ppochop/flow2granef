@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/dgraph-io/dgo/v240"
-	"github.com/ppochop/flow2granef/flowutils"
 	"github.com/ppochop/flow2granef/profiles"
 	dgraphhelpers "github.com/ppochop/flow2granef/profiles/dgraph_helpers"
 	"github.com/satta/gommunityid"
@@ -73,6 +72,7 @@ func (s *SuricataTransformer) handleFlow(ctx context.Context, event *SuricataEve
 	xid := strconv.FormatUint(event.FlowId, 10)
 	hit := false
 
+	/* Active timeouts relevant only for sensor restarts, needs a bit more thought
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
 		xid, hit = s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
@@ -82,6 +82,7 @@ func (s *SuricataTransformer) handleFlow(ctx context.Context, event *SuricataEve
 			xid = foundXid
 		}
 	}
+	*/
 	dgraphhelpers.HandleFlow(ctx, s.dgoClient, flow, xid, hit, &s.stats)
 	return nil
 }
@@ -101,6 +102,20 @@ func (s *SuricataTransformer) handleDns(ctx context.Context, event *SuricataEve)
 	return dgraphhelpers.HandleDnsWithFlowPlaceholder(ctx, s.dgoClient, dns, xid, &s.stats)
 }
 
+func (s *SuricataTransformer) handleHttp(ctx context.Context, event *SuricataEve) error {
+	http := event.Http.GetGranefHTTPRec()
+	flow := event.GetGranefMiminalFlowRec("suricata")
+	ft := flow.GetFlowTuple()
+	http.ClientIp = flow.OrigIp
+	http.ServerIp = flow.RespIp
+
+	commId := s.commIdGen.CalcBase64(ft)
+	flow.CommId = commId
+	xid := strconv.FormatUint(event.FlowId, 10)
+
+	return dgraphhelpers.HandleHttpWithFlowPlaceholder(ctx, s.dgoClient, http, xid, &s.stats)
+}
+
 func (s *SuricataTransformer) Handle(ctx context.Context, data []byte) error {
 	event := SuricataEve{}
 	err := json.Unmarshal(data, &event)
@@ -114,7 +129,7 @@ func (s *SuricataTransformer) Handle(ctx context.Context, data []byte) error {
 	case SuricataEventDns:
 		err = s.handleDns(ctx, &event)
 	case SuricataEventHttp:
-		return nil
+		err = s.handleHttp(ctx, &event)
 	default:
 		return fmt.Errorf("unsupported suricata event type: %s", event.EventType)
 	}

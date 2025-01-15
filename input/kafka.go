@@ -9,7 +9,6 @@ import (
 
 type KafkaInput struct {
 	consumer     *kafka.Consumer
-	read         uint
 	msgsConsumed prometheus.Counter
 }
 
@@ -37,8 +36,9 @@ func InitKafkaConsumer(config InputConfig, stats InputStats) (Input, error) {
 		Topic:            config["topic"].(string),
 	}
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": kC.BootstrapServers,
-		"group.id":          kC.GroupId,
+		"bootstrap.servers":    kC.BootstrapServers,
+		"group.id":             kC.GroupId,
+		"max.poll.interval.ms": 80000000,
 		//"auto.offset.reset": "latest",
 	})
 	if err != nil {
@@ -64,10 +64,4 @@ func (k *KafkaInput) NextEntry() ([]byte, error) {
 		return nil, err
 	}
 	return nil, nil
-}
-
-func (k *KafkaInput) GetStats() map[string]uint {
-	return map[string]uint{
-		"messages_read": k.read,
-	}
 }

@@ -59,11 +59,12 @@ DNS.trans_id: int @index(int) .
 DNS.query: [uid] @count @reverse .
 DNS.answer: [uid] @count @reverse .
 
-HTTP.url: string @index(hash) .
+HTTP.url: string @index(hash, trigram) .
+HTTP.path: string @index(hash) .
 HTTP.hostname: [uid] @reverse .
 HTTP.user_agent: [uid] @reverse .
 
-UserAgent.user_agent: string @upsert @index(exact) .
+UserAgent.user_agent: string @upsert @index(hash, trigram) .
 
 Hostname.name: string @upsert @index(exact) .
 
@@ -72,6 +73,8 @@ type Host {
     Host.user_agent
     Host.hostname
     <~DNS.answer>
+    <~FlowRec.originated_by>
+    <~FlowRec.received_by>
 }
 
 type FlowRec {
@@ -95,6 +98,7 @@ type HTTP {
     HTTP.user_agent
     HTTP.hostname
     HTTP.url
+    HTTP.path
 }
 
 type DNS {
