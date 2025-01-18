@@ -50,11 +50,15 @@ func (s *SuricataEve) DetermineEventType() SuricataEventType {
 }
 
 func (s *SuricataEve) GetGranefFlowRec(source string) *flowutils.FlowRec {
-	return &flowutils.FlowRec{
+	ret := &flowutils.FlowRec{
 		OrigIp:      &s.SrcIp,
 		OrigPort:    s.SrcPort,
 		RespIp:      &s.DestIp,
 		RespPort:    s.DestPort,
+		OrigBytes:   s.Flow.BytesToServer,
+		RespBytes:   s.Flow.BytesToClient,
+		OrigPkts:    s.Flow.PktsToServer,
+		RespPkts:    s.Flow.PktsToClient,
 		FlushReason: s.Flow.GetSuricataFlushReason(),
 		FirstTs:     s.Flow.GetFirstTs(),
 		LastTs:      s.Flow.GetLastTs(),
@@ -62,6 +66,13 @@ func (s *SuricataEve) GetGranefFlowRec(source string) *flowutils.FlowRec {
 		App:         s.AppProto,
 		FlowSource:  source,
 	}
+	if s.Flow.Bypassed != nil {
+		ret.OrigBytes += s.Flow.Bypassed.BytesToServer
+		ret.RespBytes += s.Flow.Bypassed.BytesToClient
+		ret.OrigPkts += s.Flow.Bypassed.PktsToServer
+		ret.RespPkts += s.Flow.Bypassed.PktsToClient
+	}
+	return ret
 }
 
 func (s *SuricataEve) GetGranefMiminalFlowRec(source string) *flowutils.FlowRec {

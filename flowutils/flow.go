@@ -14,6 +14,10 @@ type FlowRec struct {
 	OrigPort    uint16
 	RespIp      *netip.Addr
 	RespPort    uint16
+	OrigBytes   uint64
+	RespBytes   uint64
+	OrigPkts    uint64
+	RespPkts    uint64
 	FlushReason FlushReason
 	FirstTs     time.Time
 	LastTs      time.Time

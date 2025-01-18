@@ -22,10 +22,10 @@ type IpfixprobeFlow struct {
 	FlowStartMs          time.Time   `json:"iana:flowStartMicroseconds"`
 	FlowEndMs            time.Time   `json:"iana:flowEndMicroseconds"`
 	FlowId               uint64      `json:"iana:flowId"`
-	Pkts                 uint        `json:"iana:packetDeltaCount"`
-	PktsReverse          uint        `json:"iana@reverse:packetDeltaCount@reverse"`
-	Bytes                uint        `json:"iana:octetDeltaCount"`
-	BytesReverse         uint        `json:"iana@reverse:octetDeltaCount@reverse"`
+	Pkts                 uint64      `json:"iana:packetDeltaCount"`
+	PktsReverse          uint64      `json:"iana@reverse:packetDeltaCount@reverse"`
+	Bytes                uint64      `json:"iana:octetDeltaCount"`
+	BytesReverse         uint64      `json:"iana@reverse:octetDeltaCount@reverse"`
 	FlowEndReason        int         `json:"iana:flowEndReason"`
 	IcmpTypeCode4        *uint16     `json:"iana:icmpTypeCodeIPv4"`
 	IcmpTypeCode4Reverse *uint16     `json:"iana@reverse:icmpTypeCodeIPv4@reverse"`
@@ -54,6 +54,10 @@ func (f *IpfixprobeFlow) GetGranefFlowRec(source string) *flowutils.FlowRec {
 		OrigPort:    f.SrcPort,
 		RespIp:      destIp,
 		RespPort:    f.DestPort,
+		OrigBytes:   f.Bytes,
+		RespBytes:   f.BytesReverse,
+		OrigPkts:    f.Pkts,
+		RespPkts:    f.PktsReverse,
 		FlushReason: f.GetIpfixFlushReason(),
 		FirstTs:     f.GetFirstTs(),
 		LastTs:      f.GetLastTs(),
@@ -67,6 +71,8 @@ func (f *IpfixprobeFlow) GetGranefFlowRec(source string) *flowutils.FlowRec {
 		ret.OrigPort = f.DestPort
 		ret.RespIp = srcIp
 		ret.RespPort = f.SrcPort
+		ret.OrigBytes, ret.RespBytes = ret.RespBytes, ret.OrigBytes
+		ret.OrigPkts, ret.RespPkts = ret.RespPkts, ret.OrigPkts
 	}
 	return ret
 }

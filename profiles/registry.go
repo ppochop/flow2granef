@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dgraph-io/dgo/v240"
+	xidcache "github.com/ppochop/flow2granef/xid-cache"
 )
 
 type transformersRegistryType map[string]TransformerFactory
@@ -14,7 +15,7 @@ var transformersRegistry = make(transformersRegistryType)
 var transformersDuplCheckRegistry = make(transformersDuplCheckRegistryType)
 var preHandlerRegistry = make(preHandlerRegistryType)
 
-func GetTransformer(fSType string, cache Cache, dgoClient *dgo.Dgraph, stats TransformerStats) (Transformer, error) {
+func GetTransformer(fSType string, cache *xidcache.IdCache, dgoClient *dgo.Dgraph, stats TransformerStats) (Transformer, error) {
 	transformerFactory, found := transformersRegistry[fSType]
 	if !found {
 		return nil, fmt.Errorf("unknown profile %s", fSType)
@@ -22,7 +23,7 @@ func GetTransformer(fSType string, cache Cache, dgoClient *dgo.Dgraph, stats Tra
 	return transformerFactory(cache, dgoClient, stats), nil
 }
 
-func GetTransformerDuplCheck(fSType string, cache CacheDuplCheck, instanceName string) (Transformer, error) {
+func GetTransformerDuplCheck(fSType string, cache *xidcache.DuplCache, instanceName string) (Transformer, error) {
 	transformerFactory, found := transformersDuplCheckRegistry[fSType]
 	if !found {
 		return nil, fmt.Errorf("unknown profile %s", fSType)

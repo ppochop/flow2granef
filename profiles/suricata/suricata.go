@@ -9,15 +9,17 @@ import (
 	"strconv"
 
 	"github.com/dgraph-io/dgo/v240"
+	"github.com/ppochop/flow2granef/flowutils"
 	"github.com/ppochop/flow2granef/profiles"
 	dgraphhelpers "github.com/ppochop/flow2granef/profiles/dgraph_helpers"
+	xidcache "github.com/ppochop/flow2granef/xid-cache"
 	"github.com/satta/gommunityid"
 )
 
 type SuricataTransformer struct {
 	commIdGen gommunityid.CommunityID
 	reTime    *regexp.Regexp
-	cache     profiles.Cache
+	cache     *xidcache.IdCache
 	dgoClient *dgo.Dgraph
 	stats     profiles.TransformerStats
 }
@@ -25,7 +27,7 @@ type SuricataTransformer struct {
 type SuricataTransformerDuplCheck struct {
 	instanceName string
 	commIdGen    gommunityid.CommunityID
-	cache        profiles.CacheDuplCheck
+	cache        *xidcache.DuplCache
 }
 
 func init() {
@@ -34,7 +36,7 @@ func init() {
 	profiles.RegisterDuplCheckTransformer("suricata", InitSuricataTransformerDuplCheck)
 }
 
-func InitSuricataTransformer(cache profiles.Cache, dgoClient *dgo.Dgraph, stats profiles.TransformerStats) profiles.Transformer {
+func InitSuricataTransformer(cache *xidcache.IdCache, dgoClient *dgo.Dgraph, stats profiles.TransformerStats) profiles.Transformer {
 	commId, _ := gommunityid.GetCommunityIDByVersion(1, 0)
 	return &SuricataTransformer{
 		commIdGen: commId,
@@ -44,7 +46,7 @@ func InitSuricataTransformer(cache profiles.Cache, dgoClient *dgo.Dgraph, stats 
 	}
 }
 
-func InitSuricataTransformerDuplCheck(cache profiles.CacheDuplCheck, name string) profiles.Transformer {
+func InitSuricataTransformerDuplCheck(cache *xidcache.DuplCache, name string) profiles.Transformer {
 	commId, _ := gommunityid.GetCommunityIDByVersion(1, 0)
 	return &SuricataTransformerDuplCheck{
 		instanceName: name,
@@ -70,19 +72,19 @@ func (s *SuricataTransformer) handleFlow(ctx context.Context, event *SuricataEve
 	commId := s.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := strconv.FormatUint(event.FlowId, 10)
-	hit := false
+	var hit xidcache.CacheHitResult
 
-	/* Active timeouts relevant only for sensor restarts, needs a bit more thought
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
-		xid, hit = s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
+		xid, hit = s.cache.AddOrGet(commId, false, xid, flow.FirstTs, flow.LastTs)
 	default:
-		foundXid, hit := s.cache.Get(commId, flow.FirstTs)
-		if hit {
+		var foundXid string
+		foundXid, hit = s.cache.Get(commId, flow.FirstTs)
+		if hit != xidcache.Miss {
 			xid = foundXid
 		}
 	}
-	*/
+
 	dgraphhelpers.HandleFlow(ctx, s.dgoClient, flow, xid, hit, &s.stats)
 	return nil
 }
@@ -98,7 +100,7 @@ func (s *SuricataTransformer) handleDns(ctx context.Context, event *SuricataEve)
 	commId := s.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := strconv.FormatUint(event.FlowId, 10)
-
+	xid, _ = s.cache.AddOrGet(commId, true, xid, flow.FirstTs, flow.LastTs)
 	return dgraphhelpers.HandleDnsWithFlowPlaceholder(ctx, s.dgoClient, dns, xid, &s.stats)
 }
 
@@ -112,7 +114,7 @@ func (s *SuricataTransformer) handleHttp(ctx context.Context, event *SuricataEve
 	commId := s.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := strconv.FormatUint(event.FlowId, 10)
-
+	xid, _ = s.cache.AddOrGet(commId, true, xid, flow.FirstTs, flow.LastTs)
 	return dgraphhelpers.HandleHttpWithFlowPlaceholder(ctx, s.dgoClient, http, xid, &s.stats)
 }
 

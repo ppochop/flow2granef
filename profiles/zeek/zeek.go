@@ -15,12 +15,13 @@ import (
 	ipproto "github.com/ppochop/flow2granef/ip-proto"
 	"github.com/ppochop/flow2granef/profiles"
 	dgraphhelpers "github.com/ppochop/flow2granef/profiles/dgraph_helpers"
+	xidcache "github.com/ppochop/flow2granef/xid-cache"
 	"github.com/satta/gommunityid"
 )
 
 type ZeekTransformer struct {
 	commIdGen gommunityid.CommunityID
-	cache     profiles.Cache
+	cache     *xidcache.IdCache
 	dgoClient *dgo.Dgraph
 	stats     profiles.TransformerStats
 }
@@ -28,7 +29,7 @@ type ZeekTransformer struct {
 type ZeekTransformerDuplCheck struct {
 	instanceName string
 	commIdGen    gommunityid.CommunityID
-	cache        profiles.CacheDuplCheck
+	cache        *xidcache.DuplCache
 }
 
 func init() {
@@ -37,7 +38,7 @@ func init() {
 	profiles.RegisterDuplCheckTransformer("zeek", InitZeekTransformerDuplCheck)
 }
 
-func InitZeekTransformer(cache profiles.Cache, dgoClient *dgo.Dgraph, stats profiles.TransformerStats) profiles.Transformer {
+func InitZeekTransformer(cache *xidcache.IdCache, dgoClient *dgo.Dgraph, stats profiles.TransformerStats) profiles.Transformer {
 	commId, _ := gommunityid.GetCommunityIDByVersion(1, 0)
 	return &ZeekTransformer{
 		commIdGen: commId,
@@ -47,7 +48,7 @@ func InitZeekTransformer(cache profiles.Cache, dgoClient *dgo.Dgraph, stats prof
 	}
 }
 
-func InitZeekTransformerDuplCheck(cache profiles.CacheDuplCheck, name string) profiles.Transformer {
+func InitZeekTransformerDuplCheck(cache *xidcache.DuplCache, name string) profiles.Transformer {
 	commId, _ := gommunityid.GetCommunityIDByVersion(1, 0)
 	return &ZeekTransformerDuplCheck{
 		instanceName: name,
@@ -73,19 +74,19 @@ func (z *ZeekTransformer) handleFlow(ctx context.Context, event *ZeekConn) error
 	commId := z.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := event.Uid
-	hit := false
+	var hit xidcache.CacheHitResult
 
-	/* Active timeouts relevant only for sensor restarts, needs a bit more thought
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
-		xid, hit = s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
+		xid, hit = z.cache.AddOrGet(commId, false, xid, flow.FirstTs, flow.LastTs)
 	default:
-		foundXid, hit := s.cache.Get(commId, flow.FirstTs)
-		if hit {
+		var foundXid string
+		foundXid, hit = z.cache.Get(commId, flow.FirstTs)
+		if hit != xidcache.Miss {
 			xid = foundXid
 		}
 	}
-	*/
+
 	dgraphhelpers.HandleFlow(ctx, z.dgoClient, flow, xid, hit, &z.stats)
 	return nil
 }
@@ -101,11 +102,7 @@ func (z *ZeekTransformer) handleDns(ctx context.Context, eventDns *ZeekDns, even
 	commId := z.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := eventConnL.Uid
-
-	// pointless if we know the flow comes from zeek
-	// but a necessary building block for inter-source integration (flow from ipfix, dns from zeek)
-	//xid, hit := s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
-
+	xid, _ = z.cache.AddOrGet(commId, true, xid, flow.FirstTs, flow.LastTs)
 	return dgraphhelpers.HandleDnsWithFlowPlaceholder(ctx, z.dgoClient, dns, xid, &z.stats)
 }
 
@@ -120,7 +117,7 @@ func (z *ZeekTransformer) handleHttp(ctx context.Context, eventHttp *ZeekHttp, e
 	commId := z.commIdGen.CalcBase64(ft)
 	flow.CommId = commId
 	xid := eventConnL.Uid
-
+	xid, _ = z.cache.AddOrGet(commId, true, xid, flow.FirstTs, flow.LastTs)
 	return dgraphhelpers.HandleHttpWithFlowPlaceholder(ctx, z.dgoClient, http, xid, &z.stats)
 }
 

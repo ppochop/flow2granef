@@ -24,7 +24,16 @@ type IdCache struct {
 type IdCacheEntry struct {
 	xid              string
 	timeoutThreshold time.Time
+	isPlaceholder    bool
 }
+
+type CacheHitResult uint8
+
+const (
+	Miss CacheHitResult = iota
+	HitPlaceholder
+	Hit
+)
 
 func New(timeout time.Duration) *IdCache {
 	cache := cache.New(timeout, 2*timeout)
@@ -34,53 +43,58 @@ func New(timeout time.Duration) *IdCache {
 	}
 }
 
-func (c *IdCache) Add(commId string, xid string, lastTs time.Time) error {
+func (c *IdCache) Add(commId string, placeholder bool, xid string, lastTs time.Time) error {
 	entry := IdCacheEntry{
 		xid:              xid,
 		timeoutThreshold: lastTs.Add(c.timeout),
+		isPlaceholder:    placeholder,
 	}
 	return c.cache.Add(commId, &entry, cache.DefaultExpiration)
 }
 
-func (c *IdCache) Set(commId string, xid string, lastTs time.Time) {
+func (c *IdCache) Set(commId string, placeholder bool, xid string, lastTs time.Time) {
 	entry := IdCacheEntry{
 		xid:              xid,
 		timeoutThreshold: lastTs.Add(c.timeout),
+		isPlaceholder:    placeholder,
 	}
 	c.cache.Set(commId, &entry, cache.DefaultExpiration)
 }
 
-func (c *IdCache) Get(commId string, firstTs time.Time) (string, bool) {
+func (c *IdCache) Get(commId string, firstTs time.Time) (string, CacheHitResult) {
 	res, found := c.cache.Get(commId)
 	if !found {
-		return "", false
+		return "", Miss
 	}
 	entry := res.(*IdCacheEntry)
 	if firstTs.Round(time.Second).After(entry.timeoutThreshold) {
-		return "", false
+		return "", Miss
 	}
-	return entry.xid, true
+	if entry.isPlaceholder {
+		return entry.xid, HitPlaceholder
+	}
+	return entry.xid, Hit
 }
 
-func (c *IdCache) AddOrGet(commId string, xid string, firstTs time.Time, lastTs time.Time) (string, bool) {
-	err := c.Add(commId, xid, lastTs)
+func (c *IdCache) AddOrGet(commId string, placeholder bool, xid string, firstTs time.Time, lastTs time.Time) (string, CacheHitResult) {
+	err := c.Add(commId, placeholder, xid, lastTs)
 
 	// Cache miss, use your provided xid
 	if err == nil {
-		return xid, false
+		return xid, Miss
 	}
 
 	// Cache hit, get the xid from cache
 	xidFromCache, hit := c.Get(commId, firstTs)
 
-	if !hit {
+	if hit == Miss {
 		// wtf
 		slog.Error("Failed to both add and get xid from cache", "xid", xid, "comm_id", commId, "fromCache", xidFromCache)
-		return xid, false
+		return xid, Miss
 	}
 	// Should "update" the cache with new timeout
 	// NOT thread-safe, should probably be reworked
 	// but the risk is acceptable for now
-	c.Set(commId, xidFromCache, lastTs)
-	return xidFromCache, true
+	c.Set(commId, placeholder, xidFromCache, lastTs)
+	return xidFromCache, hit
 }

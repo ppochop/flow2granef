@@ -13,6 +13,7 @@ import (
 
 	"github.com/ppochop/flow2granef/input"
 	"github.com/ppochop/flow2granef/profiles"
+
 	_ "github.com/ppochop/flow2granef/profiles/ipfix"
 	_ "github.com/ppochop/flow2granef/profiles/suricata"
 	_ "github.com/ppochop/flow2granef/profiles/zeek"

@@ -19,10 +19,10 @@ type ZeekConn struct {
 	Proto     string     `json:"proto"`
 	Service   string     `json:"service"`
 	Duration  float64    `json:"duration"`
-	OrigPkts  uint       `json:"orig_pkts"`
-	OrigBytes uint       `json:"orig_ip_bytes"`
-	RespPkts  uint       `json:"resp_pkts"`
-	RespBytes uint       `json:"resp_ip_bytes"`
+	OrigPkts  uint64     `json:"orig_pkts"`
+	OrigBytes uint64     `json:"orig_ip_bytes"`
+	RespPkts  uint64     `json:"resp_pkts"`
+	RespBytes uint64     `json:"resp_ip_bytes"`
 	ConnState string     `json:"conn_state"`
 	OuterVlan *uint16    `json:"vlan"`
 	InnerVlan *uint16    `json:"inner_vlan"`
@@ -55,6 +55,10 @@ func (z *ZeekConn) GetGranefFlowRec(source string) *flowutils.FlowRec {
 		OrigPort:    z.OrigPort,
 		RespIp:      &z.RespIp,
 		RespPort:    z.RespPort,
+		OrigBytes:   z.OrigBytes,
+		RespBytes:   z.RespBytes,
+		OrigPkts:    z.OrigPkts,
+		RespPkts:    z.RespPkts,
 		FlushReason: z.GetZeekFlushReason(),
 		FirstTs:     z.GetFirstTs(),
 		LastTs:      z.GetLastTs(),

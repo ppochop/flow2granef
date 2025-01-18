@@ -10,12 +10,13 @@ import (
 	"github.com/ppochop/flow2granef/flowutils"
 	"github.com/ppochop/flow2granef/profiles"
 	dgraphhelpers "github.com/ppochop/flow2granef/profiles/dgraph_helpers"
+	xidcache "github.com/ppochop/flow2granef/xid-cache"
 	"github.com/satta/gommunityid"
 )
 
 type IpfixprobeTransformer struct {
 	commIdGen gommunityid.CommunityID
-	cache     profiles.Cache
+	cache     *xidcache.IdCache
 	dgoClient *dgo.Dgraph
 	stats     profiles.TransformerStats
 }
@@ -23,7 +24,7 @@ type IpfixprobeTransformer struct {
 type IpfixprobeTransformerDuplCheck struct {
 	instanceName string
 	commIdGen    gommunityid.CommunityID
-	cache        profiles.CacheDuplCheck
+	cache        *xidcache.DuplCache
 }
 
 func init() {
@@ -32,7 +33,7 @@ func init() {
 	profiles.RegisterPreHandler("ipfixprobe", IpfixPreHandle)
 }
 
-func InitIpfixprobeTransformer(cache profiles.Cache, dgoClient *dgo.Dgraph, stats profiles.TransformerStats) profiles.Transformer {
+func InitIpfixprobeTransformer(cache *xidcache.IdCache, dgoClient *dgo.Dgraph, stats profiles.TransformerStats) profiles.Transformer {
 	commId, _ := gommunityid.GetCommunityIDByVersion(1, 0)
 	return &IpfixprobeTransformer{
 		commIdGen: commId,
@@ -42,7 +43,7 @@ func InitIpfixprobeTransformer(cache profiles.Cache, dgoClient *dgo.Dgraph, stat
 	}
 }
 
-func InitIpfixprobeTransformerDuplCheck(cache profiles.CacheDuplCheck, name string) profiles.Transformer {
+func InitIpfixprobeTransformerDuplCheck(cache *xidcache.DuplCache, name string) profiles.Transformer {
 	commId, _ := gommunityid.GetCommunityIDByVersion(1, 0)
 	return &IpfixprobeTransformerDuplCheck{
 		instanceName: name,
@@ -74,13 +75,14 @@ func (s *IpfixprobeTransformer) Handle(ctx context.Context, data []byte) error {
 	flow.CommId = commId
 	xid := strconv.FormatUint(event.FlowId, 10)
 
-	var hit bool
+	var hit xidcache.CacheHitResult
 	switch flow.FlushReason {
 	case flowutils.ActiveTimeout:
-		xid, hit = s.cache.AddOrGet(commId, xid, flow.FirstTs, flow.LastTs)
+		xid, hit = s.cache.AddOrGet(commId, false, xid, flow.FirstTs, flow.LastTs)
 	default:
-		foundXid, hit := s.cache.Get(commId, flow.FirstTs)
-		if hit {
+		var foundXid string
+		foundXid, hit = s.cache.Get(commId, flow.FirstTs)
+		if hit != xidcache.Miss {
 			xid = foundXid
 		}
 	}

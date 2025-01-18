@@ -2,21 +2,11 @@ package profiles
 
 import (
 	"context"
-	"time"
 
 	"github.com/dgraph-io/dgo/v240"
+	xidcache "github.com/ppochop/flow2granef/xid-cache"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-type Cache interface {
-	Set(commId string, xid string, lastTs time.Time)
-	Get(commId string, firstTs time.Time) (string, bool)
-	AddOrGet(commId string, xid string, firstTs time.Time, lastTs time.Time) (string, bool)
-}
-
-type CacheDuplCheck interface {
-	DuplHandle(string, time.Time, time.Time, string) (string, bool)
-}
 
 type TransformerStats struct {
 	EventsProcessed        prometheus.Counter
@@ -36,8 +26,8 @@ type TransformerStats struct {
 	RepeatedTxnHosts       prometheus.Counter
 }
 
-type TransformerFactory func(Cache, *dgo.Dgraph, TransformerStats) Transformer
-type TransformerDuplCheckFactory func(CacheDuplCheck, string) Transformer
+type TransformerFactory func(*xidcache.IdCache, *dgo.Dgraph, TransformerStats) Transformer
+type TransformerDuplCheckFactory func(*xidcache.DuplCache, string) Transformer
 
 type Transformer interface {
 	Handle(ctx context.Context, flow []byte) error

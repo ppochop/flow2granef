@@ -11,6 +11,7 @@ import (
 	"github.com/dgraph-io/dgo/v240/protos/api"
 	"github.com/ppochop/flow2granef/flowutils"
 	"github.com/ppochop/flow2granef/profiles"
+	xidcache "github.com/ppochop/flow2granef/xid-cache"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -49,13 +50,13 @@ func AttemptHostsTxn(ctx context.Context, dC *dgo.Dgraph, ip1 *netip.Addr, ip2 *
 	return nil
 }
 
-func AttemptFlowRecTxn(ctx context.Context, dC *dgo.Dgraph, f *flowutils.FlowRec, xid string, cacheHit bool, softfailCtr prometheus.Counter) error {
+func AttemptFlowRecTxn(ctx context.Context, dC *dgo.Dgraph, f *flowutils.FlowRec, xid string, cacheHit xidcache.CacheHitResult, softfailCtr prometheus.Counter) error {
 	req := buildFlowRecTxn(f, xid, cacheHit)
 	return AttemptTxn(ctx, dC, req, true, softfailCtr, 10)
 }
 
-func HandleFlow(ctx context.Context, dC *dgo.Dgraph, f *flowutils.FlowRec, xid string, cacheHit bool, stats *profiles.TransformerStats) error {
-	if !cacheHit { // Hosts may not exist
+func HandleFlow(ctx context.Context, dC *dgo.Dgraph, f *flowutils.FlowRec, xid string, cacheHit xidcache.CacheHitResult, stats *profiles.TransformerStats) error {
+	if cacheHit != xidcache.Hit { // Hosts may not exist
 		// We don't care about failures here as they mean the host already exists
 		err := AttemptHostsTxn(ctx, dC, f.OrigIp, f.RespIp, stats.SoftfailedTxnHosts)
 		if err != nil {

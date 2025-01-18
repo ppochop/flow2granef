@@ -17,17 +17,17 @@ func TestOrdered(t *testing.T) {
 	ftsA.UnmarshalText([]byte("2013-02-26T22:02:56.293Z"))
 	atsA := ftsA
 
-	var hit bool
-	xid1, hit := c.AddOrGet(commId, flowIdQ, ftsQ, atsQ)
-	if hit == true {
+	var hit CacheHitResult
+	xid1, hit := c.AddOrGet(commId, false, flowIdQ, ftsQ, atsQ)
+	if hit == Hit {
 		t.Fatalf("hit empty cache")
 	}
 	if xid1 != flowIdQ {
 		t.Fatalf("unexpected returned xid")
 	}
 
-	xid2, hit := c.AddOrGet(commId, flowIdA, ftsA, atsA)
-	if hit == false {
+	xid2, hit := c.AddOrGet(commId, false, flowIdA, ftsA, atsA)
+	if hit == Miss {
 		t.Fatalf("did not hit cache when should")
 	}
 	if xid2 != flowIdQ {

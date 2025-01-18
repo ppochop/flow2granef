@@ -46,6 +46,10 @@ FlowRec.originated_by: uid @reverse .
 FlowRec.received_by: uid @reverse .
 FlowRec.orig_port: int .
 FlowRec.recv_port: int .
+FlowRec.from_orig_bytes: int .
+FlowRec.from_recv_bytes: int .
+FlowRec.from_orig_pkts: int .
+FlowRec.from_recv_pkts: int .
 FlowRec.first_ts: dateTime @index(hour) .
 FlowRec.last_ts: dateTime @index(hour) .
 FlowRec.protocol: string @index(hash) .
@@ -85,6 +89,10 @@ type FlowRec {
     FlowRec.produced
     FlowRec.orig_port
     FlowRec.recv_port
+    FlowRec.from_orig_bytes
+    FlowRec.from_recv_bytes
+    FlowRec.from_orig_pkts
+    FlowRec.from_recv_pkts
     FlowRec.first_ts
     FlowRec.last_ts
     FlowRec.protocol

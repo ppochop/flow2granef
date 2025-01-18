@@ -8,17 +8,17 @@ import (
 )
 
 type SuricataFlowBypassedInfo struct {
-	PktsToServer  uint `json:"pkts_toserver"`
-	PktsToClient  uint `json:"pkts_toclient"`
-	BytesToServer uint `json:"bytes_toserver"`
-	BytesToClient uint `json:"bytes_toclient"`
+	PktsToServer  uint64 `json:"pkts_toserver"`
+	PktsToClient  uint64 `json:"pkts_toclient"`
+	BytesToServer uint64 `json:"bytes_toserver"`
+	BytesToClient uint64 `json:"bytes_toclient"`
 }
 
 type SuricataFlowInfo struct {
-	PktsToServer  uint                      `json:"pkts_toserver"`
-	PktsToClient  uint                      `json:"pkts_toclient"`
-	BytesToServer uint                      `json:"bytes_toserver"`
-	BytesToClient uint                      `json:"bytes_toclient"`
+	PktsToServer  uint64                    `json:"pkts_toserver"`
+	PktsToClient  uint64                    `json:"pkts_toclient"`
+	BytesToServer uint64                    `json:"bytes_toserver"`
+	BytesToClient uint64                    `json:"bytes_toclient"`
 	Start         SuriTime                  `json:"start"`
 	End           SuriTime                  `json:"end"`
 	Age           uint                      `json:"age"`
