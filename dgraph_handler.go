@@ -68,7 +68,7 @@ HTTP.path: string @index(hash) .
 HTTP.hostname: [uid] @reverse .
 HTTP.user_agent: [uid] @reverse .
 
-UserAgent.user_agent: string @upsert @index(hash, trigram) .
+UserAgent.user_agent: string @upsert @index(exact) .
 
 Hostname.name: string @upsert @index(exact) .
 

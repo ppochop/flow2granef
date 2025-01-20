@@ -21,18 +21,39 @@ func handleUrl(url *string) (cleanUrl *string, path *string) {
 	return &replaced, &ret
 }
 
+func buildHttpHostsEdges(h *flowutils.HTTPRec) *api.Request {
+	query := fmt.Sprintf(`
+		query {
+			Hostname as var(func: eq(Hostname.name, "%s"))
+			ClientHost as var(func: eq(Host.ip, "%s"))
+			ServerHost as var(func: eq(Host.ip, "%s"))
+			UA as var(func: eq(UserAgent.user_agent, "%s"))
+		}
+	`, *h.Hostname, h.ClientIp.StringExpanded(), h.ServerIp.StringExpanded(), *h.UserAgent)
+	hostnameMutation := "uid(ServerHost) <Host.hostname> uid(Hostname) ."
+	uaMutation := "uid(ClientHost) <Host.user_agent> uid(UA) ."
+	hM := &api.Mutation{
+		SetNquads: []byte(hostnameMutation),
+	}
+	uM := &api.Mutation{
+		SetNquads: []byte(uaMutation),
+	}
+	req := &api.Request{
+		CommitNow: true,
+		Query:     query,
+		Mutations: []*api.Mutation{hM, uM},
+	}
+	return req
+}
+
 func buildHttpTxn(h *flowutils.HTTPRec, flowXid string, url *string, path *string) *api.Request {
 	query := fmt.Sprintf(`
 		query {
 			Hostname as var(func: eq(Hostname.name, "%s"))
 			Flow as var(func: eq(FlowRec.id, "%s")) 
-			ClientHost as var(func: eq(Host.ip, "%s"))
-			ServerHost as var(func: eq(Host.ip, "%s"))
 			UA as var(func: eq(UserAgent.user_agent, "%s"))
 		}
-	`, *h.Hostname, flowXid, h.ClientIp.StringExpanded(), h.ServerIp.StringExpanded(), *h.UserAgent)
-	hostnameMutation := "uid(ServerHost) <Host.hostname> uid(Hostname) ."
-	uaMutation := "uid(ClientHost) <Host.user_agent> uid(UA) ."
+	`, *h.Hostname, flowXid, *h.UserAgent)
 	httpMutation := fmt.Sprintf(`
 		<_:http> <dgraph.type> "HTTP" .
 		<_:http> <HTTP.url> "%s" .
@@ -41,19 +62,14 @@ func buildHttpTxn(h *flowutils.HTTPRec, flowXid string, url *string, path *strin
 		<_:http> <HTTP.user_agent> uid(UA) .
 		uid(Flow) <FlowRec.produced> <_:http> .
 	`, *url, *path)
-	hM := &api.Mutation{
-		SetNquads: []byte(hostnameMutation),
-	}
-	uM := &api.Mutation{
-		SetNquads: []byte(uaMutation),
-	}
+
 	httpM := &api.Mutation{
 		SetNquads: []byte(httpMutation),
 	}
 	req := &api.Request{
 		CommitNow: true,
 		Query:     query,
-		Mutations: []*api.Mutation{hM, uM, httpM},
+		Mutations: []*api.Mutation{httpM},
 	}
 	return req
 }

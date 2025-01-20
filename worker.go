@@ -25,7 +25,7 @@ func spawnTransformer(ctx context.Context, transformer profiles.Transformer, flo
 	}
 }
 
-func sendToTransform(ctx context.Context, input []byte, preHandler profiles.PreHandler, channels []chan []byte, workers_num uint32) {
+func sendToTransformPreHandle(ctx context.Context, input []byte, preHandler profiles.PreHandler, channels []chan []byte, workers_num uint32) {
 	worker_preid, err := preHandler(input)
 	if err != nil {
 		slog.Error("error during attempting to get ip pair id", "error", err)
@@ -54,9 +54,32 @@ func spawnInputter(ctx context.Context, inputter input.Input, preHandler profile
 				continue
 			}
 			go func() {
-				sendToTransform(ctx, input, preHandler, channels, workers_num)
+				sendToTransformPreHandle(ctx, input, preHandler, channels, workers_num)
 				<-gRoutines
 			}()
+		}
+	}
+}
+
+func spawnSimpleInputter(ctx context.Context, inputter input.Input, flows chan []byte) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			input, err := inputter.NextEntry()
+			if err != nil {
+				slog.Error("error during parsing input record", "error", err)
+				return
+			}
+			if input == nil {
+				continue
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case flows <- input:
+			}
 		}
 	}
 }

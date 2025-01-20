@@ -84,14 +84,16 @@ func main() {
 		}
 		inputters[key] = inputter
 
-		preHandler, err := profiles.GetPreHandler(source.TransformerName)
-		if err != nil {
-			slog.Error("Error when getting the prehandler.", "error", err)
-			os.Exit(1)
-		}
+		/*
+			preHandler, err := profiles.GetPreHandler(source.TransformerName)
+			if err != nil {
+				slog.Error("Error when getting the prehandler.", "error", err)
+				os.Exit(1)
+			}
 
-		channels := [](chan []byte){}
-
+			channels := [](chan []byte){}
+		*/
+		flows := make(chan []byte, 64)
 		for i := 0; i < int(source.WorkersNum); i++ {
 			var transformer profiles.Transformer
 			if mC.DuplCheck {
@@ -105,8 +107,8 @@ func main() {
 				slog.Error("Failed to fetch the right transformer.", "error", err)
 				os.Exit(1)
 			}
-			flowsChannel := make(chan []byte, 256)
-			channels = append(channels, flowsChannel)
+			//flowsChannel := make(chan []byte, 256)
+			//channels = append(channels, flowsChannel)
 			transformers[fmt.Sprintf("%s:#%d", key, i)] = transformer
 
 			wg.Add(1)
@@ -117,7 +119,7 @@ func main() {
 					slog.Info(fmt.Sprintf("Transform worker %s:#%d finished", key, index))
 					wg.Done()
 				}()
-				spawnTransformer(ctx, transformer, flowsChannel)
+				spawnTransformer(ctx, transformer, flows)
 			}(key, i)
 		}
 
@@ -127,7 +129,8 @@ func main() {
 				slog.Info(fmt.Sprintf("Input worker %s finished", key))
 				wg.Done()
 			}()
-			spawnInputter(ctx, inputter, preHandler, channels, uint32(source.WorkersNum))
+			//spawnInputter(ctx, inputter, preHandler, channels, uint32(source.WorkersNum))
+			spawnSimpleInputter(ctx, inputter, flows)
 		}(key)
 
 	}

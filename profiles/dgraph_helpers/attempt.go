@@ -112,12 +112,15 @@ func HandleHttp(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowX
 	reqUA := buildUserAgentTxn(h.UserAgent)
 	AttemptTxn(ctx, dC, reqUA, true, stats.SoftfailedTxnUserAgent, 1)
 
+	reqHostsEdges := buildHttpHostsEdges(h)
+	AttemptTxn(ctx, dC, reqHostsEdges, false, stats.SoftfailedTxnHosts, 2)
+
 	url, path := handleUrl(h.Url)
 	reqHTTP := buildHttpTxn(h, flowXid, url, path)
 	err := AttemptTxn(ctx, dC, reqHTTP, true, stats.SoftfailedTxnHttp, 10)
 	if err != nil {
 		stats.HardfailedTxnHttp.Inc()
-		slog.Error("HTTP attempt failed", "err", err, "http", h)
+		slog.Error("HTTP attempt failed", "err", err, "http_ua", *h.UserAgent, "hostname", *h.Hostname, "url", *h.Url)
 		return err
 	}
 	stats.HttpAdded.Inc()
@@ -127,6 +130,6 @@ func HandleHttp(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowX
 func HandleHttpWithFlowPlaceholder(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowXid string, stats *profiles.TransformerStats) error {
 	reqFlowPlaceholder := buildFlowRecPlaceholderTxn(flowXid)
 	AttemptTxn(ctx, dC, reqFlowPlaceholder, true, stats.SoftfailedTxnFlows, 1)
-
+	AttemptHostsTxn(ctx, dC, h.ClientIp, h.ServerIp, stats.SoftfailedTxnHosts)
 	return HandleHttp(ctx, dC, h, flowXid, stats)
 }

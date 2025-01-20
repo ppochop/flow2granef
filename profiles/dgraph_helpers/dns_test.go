@@ -23,3 +23,22 @@ func TestDnsBuild(t *testing.T) {
 		t.Fatalf("error")
 	}
 }
+
+func TestDnsBuildAll(t *testing.T) {
+	ttl := uint(2)
+	ttls := []*uint{&ttl}
+	ip1 := netip.MustParseAddr("31.13.73.26")
+	answers := []*netip.Addr{&ip1}
+	id := uint16(10102)
+	q := "sphotos-b.xx.fbcdn.net"
+	dnsRec := flowutils.DNSRec{
+		TransId: &id,
+		Query:   &q,
+		Answer:  answers,
+		TTL:     ttls,
+	}
+	req := BuildDnsTxn(&dnsRec, "flowxid", "dnsxid")
+	if len(req.Mutations) == 0 {
+		t.Fatalf("error")
+	}
+}

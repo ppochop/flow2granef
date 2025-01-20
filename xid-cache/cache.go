@@ -10,7 +10,7 @@ This "freshness" of the active timeout is validated before returning the xid of 
 */
 
 import (
-	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -25,6 +25,7 @@ type IdCacheEntry struct {
 	xid              string
 	timeoutThreshold time.Time
 	isPlaceholder    bool
+	mutex            sync.Mutex
 }
 
 type CacheHitResult uint8
@@ -62,18 +63,13 @@ func (c *IdCache) Set(commId string, placeholder bool, xid string, lastTs time.T
 }
 
 func (c *IdCache) Get(commId string, firstTs time.Time) (string, CacheHitResult) {
-	res, found := c.cache.Get(commId)
-	if !found {
+	entry := c.getEntry(commId)
+	if entry == nil {
 		return "", Miss
 	}
-	entry := res.(*IdCacheEntry)
-	if firstTs.Round(time.Second).After(entry.timeoutThreshold) {
-		return "", Miss
-	}
-	if entry.isPlaceholder {
-		return entry.xid, HitPlaceholder
-	}
-	return entry.xid, Hit
+	entry.mutex.Lock()
+	defer entry.mutex.Unlock()
+	return entry.evaluateHit(firstTs)
 }
 
 func (c *IdCache) AddOrGet(commId string, placeholder bool, xid string, firstTs time.Time, lastTs time.Time) (string, CacheHitResult) {
@@ -85,16 +81,48 @@ func (c *IdCache) AddOrGet(commId string, placeholder bool, xid string, firstTs 
 	}
 
 	// Cache hit, get the xid from cache
-	xidFromCache, hit := c.Get(commId, firstTs)
+	entry := c.getEntry(commId)
 
-	if hit == Miss {
+	if entry == nil {
 		// wtf
-		slog.Error("Failed to both add and get xid from cache", "xid", xid, "comm_id", commId, "fromCache", xidFromCache)
+		c.Set(commId, placeholder, xid, lastTs)
 		return xid, Miss
 	}
-	// Should "update" the cache with new timeout
-	// NOT thread-safe, should probably be reworked
-	// but the risk is acceptable for now
-	c.Set(commId, placeholder, xidFromCache, lastTs)
-	return xidFromCache, hit
+
+	newTimeout := lastTs.Add(c.timeout)
+	entry.mutex.Lock()
+	defer entry.mutex.Unlock()
+	xidFromCache, cacheHit := entry.evaluateHit(firstTs)
+	switch cacheHit {
+	case Miss:
+		entry.isPlaceholder = placeholder
+		entry.xid = xid
+		entry.timeoutThreshold = newTimeout
+		return xid, Miss
+	default:
+		if newTimeout.After(entry.timeoutThreshold) {
+			// more recent record
+			entry.timeoutThreshold = newTimeout
+			entry.isPlaceholder = placeholder
+		}
+		return xidFromCache, cacheHit
+	}
+}
+
+func (c *IdCache) getEntry(commId string) *IdCacheEntry {
+	res, found := c.cache.Get(commId)
+	if !found {
+		return nil
+	}
+	return res.(*IdCacheEntry)
+}
+
+func (entry *IdCacheEntry) evaluateHit(firstTs time.Time) (string, CacheHitResult) {
+	if firstTs.Round(time.Second).After(entry.timeoutThreshold) {
+		return "", Miss
+	}
+	if entry.isPlaceholder {
+		return entry.xid, HitPlaceholder
+	}
+	return entry.xid, Hit
 }
