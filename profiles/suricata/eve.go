@@ -18,6 +18,7 @@ const (
 )
 
 type SuricataEve struct {
+	Timestamp    SuriTime          `json:"timestamp"`
 	FlowId       uint64            `json:"flow_id"`
 	EventType    string            `json:"event_type"`
 	SrcIp        netip.Addr        `json:"src_ip"`
@@ -83,6 +84,8 @@ func (s *SuricataEve) GetGranefMiminalFlowRec(source string) *flowutils.FlowRec 
 		RespPort:   s.DestPort,
 		Protocol:   ipproto.ProtocolFromName(s.Proto),
 		FlowSource: source,
+		FirstTs:    s.Timestamp.time.UTC(),
+		LastTs:     s.Timestamp.time.UTC(),
 	}
 }
 

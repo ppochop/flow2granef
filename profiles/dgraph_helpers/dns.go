@@ -57,5 +57,17 @@ func BuildDnsTxn(d *flowutils.DNSRec, flowXid string, dnsXid string) *api.Reques
 		Mutations: []*api.Mutation{dMu, hMu, fMu},
 		CommitNow: true,
 	}
+	for i, ip := range d.Answer {
+		hostCreate := fmt.Sprintf(`
+			uid(Host%d) <dgraph.type> "Host" .
+			uid(Host%d) <Host.ip> "%s" .
+		`, i, i, ip.StringExpanded())
+		hostCreateCond := fmt.Sprintf("@if(eq(len(Host%d), 0))", i)
+		mut := &api.Mutation{
+			SetNquads: []byte(hostCreate),
+			Cond:      hostCreateCond,
+		}
+		req.Mutations = append(req.Mutations, mut)
+	}
 	return req
 }

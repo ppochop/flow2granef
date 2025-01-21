@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"net/netip"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 
 func AttemptTxn(ctx context.Context, dC *dgo.Dgraph, req *api.Request, incCtr bool, softfailCtr prometheus.Counter, attempts int) error {
 	var err error
-	for i := 0; i < attempts; i++ {
+	for i := 1; i <= attempts; i++ {
 		txn := dC.NewTxn()
 		defer txn.Discard(ctx)
 		_, err = txn.Do(ctx, req)
@@ -27,7 +28,7 @@ func AttemptTxn(ctx context.Context, dC *dgo.Dgraph, req *api.Request, incCtr bo
 		if incCtr {
 			softfailCtr.Inc()
 		}
-		time.Sleep(time.Millisecond * 10 * time.Duration(i))
+		time.Sleep(time.Millisecond * time.Duration(i*10*(1+rand.Intn(10))))
 	}
 	return err
 }
@@ -43,8 +44,8 @@ func AttemptHostsTxn(ctx context.Context, dC *dgo.Dgraph, ip1 *netip.Addr, ip2 *
 		// host individually
 		req1 := buildIpTxn(ip1)
 		req2 := buildIpTxn(ip2)
-		AttemptTxn(ctx, dC, req1, false, softfailCtr, 1)
-		AttemptTxn(ctx, dC, req2, false, softfailCtr, 1)
+		AttemptTxn(ctx, dC, req1, false, softfailCtr, 3)
+		AttemptTxn(ctx, dC, req2, false, softfailCtr, 3)
 		return fmt.Errorf("hosts upsert retried")
 	}
 	return nil
@@ -80,7 +81,7 @@ func HandleDns(ctx context.Context, dC *dgo.Dgraph, d *flowutils.DNSRec, flowXid
 
 	for _, ip := range d.Answer {
 		reqHost := buildIpTxn(ip)
-		AttemptTxn(ctx, dC, reqHost, true, stats.SoftfailedTxnHosts, 1)
+		AttemptTxn(ctx, dC, reqHost, true, stats.SoftfailedTxnHosts, 5)
 	}
 
 	dnsXid := fmt.Sprintf("%s%d", flowXid, *d.TransId)
@@ -103,8 +104,7 @@ func HandleDnsWithFlowPlaceholder(ctx context.Context, dC *dgo.Dgraph, d *flowut
 }
 
 func HandleHttp(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowXid string, stats *profiles.TransformerStats) error {
-	reqHost := buildIpTxn(h.ServerIp)
-	AttemptTxn(ctx, dC, reqHost, true, stats.SoftfailedTxnHosts, 1)
+	AttemptHostsTxn(ctx, dC, h.ClientIp, h.ServerIp, stats.SoftfailedTxnHosts)
 
 	reqHostname := buildHostnameTxn(h.Hostname)
 	AttemptTxn(ctx, dC, reqHostname, true, stats.SoftfailedTxnHostname, 1)
@@ -113,7 +113,7 @@ func HandleHttp(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowX
 	AttemptTxn(ctx, dC, reqUA, true, stats.SoftfailedTxnUserAgent, 1)
 
 	reqHostsEdges := buildHttpHostsEdges(h)
-	AttemptTxn(ctx, dC, reqHostsEdges, false, stats.SoftfailedTxnHosts, 2)
+	AttemptTxn(ctx, dC, reqHostsEdges, false, stats.SoftfailedTxnHosts, 5)
 
 	url, path := handleUrl(h.Url)
 	reqHTTP := buildHttpTxn(h, flowXid, url, path)

@@ -38,10 +38,24 @@ func buildHttpHostsEdges(h *flowutils.HTTPRec) *api.Request {
 	uM := &api.Mutation{
 		SetNquads: []byte(uaMutation),
 	}
+	cM := &api.Mutation{
+		SetNquads: []byte(fmt.Sprintf(`
+			uid(ClientHost) <dgraph.type> "Host" .
+			uid(ClientHost) <Host.ip> "%s" .
+		`, h.ClientIp.StringExpanded())),
+		Cond: `@if(eq(len(ClientHost), 0))`,
+	}
+	sM := &api.Mutation{
+		SetNquads: []byte(fmt.Sprintf(`
+			uid(ServerHost) <dgraph.type> "Host" .
+			uid(ServerHost) <Host.ip> "%s" .
+		`, h.ServerIp.StringExpanded())),
+		Cond: `@if(eq(len(ServerHost), 0))`,
+	}
 	req := &api.Request{
 		CommitNow: true,
 		Query:     query,
-		Mutations: []*api.Mutation{hM, uM},
+		Mutations: []*api.Mutation{hM, uM, cM, sM},
 	}
 	return req
 }

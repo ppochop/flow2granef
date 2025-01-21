@@ -77,6 +77,8 @@ func (z *ZeekConnLimited) GetGranefFlowRec(source string) *flowutils.FlowRec {
 		Protocol:   ipproto.ProtocolFromName(z.Proto),
 		App:        z.Service,
 		FlowSource: source,
+		FirstTs:    z.GetFirstTs(),
+		LastTs:     z.GetFirstTs(),
 	}
 }
 

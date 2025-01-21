@@ -32,6 +32,8 @@ func buildFlowRecPlaceholderTxn(xid string) *api.Request {
 func buildFlowRecTxn(f *flowutils.FlowRec, xid string, cacheHit xidcache.CacheHitResult) *api.Request {
 	var query string
 	var flowMutations string
+	fMu := &api.Mutation{}
+	req := &api.Request{CommitNow: true}
 	if cacheHit == xidcache.Hit {
 		query = fmt.Sprintf(`
 			query {
@@ -57,6 +59,8 @@ func buildFlowRecTxn(f *flowutils.FlowRec, xid string, cacheHit xidcache.CacheHi
 			uid(Flow) <FlowRec.from_orig_pkts> val(NOP) .
 			uid(Flow) <FlowRec.from_recv_pkts> val(NRP) .
 		`, f.LastTs, f.FlushReason, f.FlowSource)
+		fMu.SetNquads = []byte(flowMutations)
+		req.Mutations = []*api.Mutation{fMu}
 	} else {
 		query = fmt.Sprintf(`
 			query {
@@ -84,11 +88,26 @@ func buildFlowRecTxn(f *flowutils.FlowRec, xid string, cacheHit xidcache.CacheHi
 			uid(Flow) <FlowRec.flush_reason> "%s" .
 			uid(Flow) <FlowRec.flow_source> "%s" .
 		`, xid, f.CommId, f.OrigPort, f.RespPort, f.OrigBytes, f.RespBytes, f.OrigPkts, f.RespPkts, f.FirstTs, f.LastTs, f.Protocol.GetName(), f.App, f.FlushReason, f.FlowSource)
+		origMutations := fmt.Sprintf(`
+			uid(Orig) <dgraph.type> "Host" .
+			uid(Orig) <Host.ip> "%s" .
+		`, f.OrigIp.StringExpanded())
+		respMutations := fmt.Sprintf(`
+			uid(Resp) <dgraph.type> "Host" .
+			uid(Resp) <Host.ip> "%s" .
+		`, f.RespIp.StringExpanded())
+		oMu := &api.Mutation{
+			SetNquads: []byte(origMutations),
+			Cond:      `@if(eq(len(Orig), 0))`,
+		}
+		rMu := &api.Mutation{
+			SetNquads: []byte(respMutations),
+			Cond:      `@if(eq(len(Resp), 0))`,
+		}
+		fMu.SetNquads = []byte(flowMutations)
+		req.Mutations = []*api.Mutation{fMu, oMu, rMu}
 	}
-	fMu := &api.Mutation{CommitNow: true}
-	req := &api.Request{CommitNow: true}
+
 	req.Query = query
-	fMu.SetNquads = []byte(flowMutations)
-	req.Mutations = []*api.Mutation{fMu}
 	return req
 }
