@@ -40,6 +40,8 @@ type IpfixprobeFlow struct {
 	HTTPUserAgent        *string     `json:"flowmon:httpUserAgent"`
 	HTTPUrl              *string     `json:"flowmon:httpUrl"`
 	HTTPHost             *string     `json:"flowmon:httpHost"`
+	HTTPStatusCode       *uint16     `json:"flowmon:httpStatusCode"`
+	HTTPMethod           *string     `json:"flowmon:httpMethod"`
 }
 
 func (f *IpfixprobeFlow) GetGranefFlowRec(source string) *flowutils.FlowRec {
@@ -83,12 +85,18 @@ func (f *IpfixprobeFlow) GetGranefDNSRec() *flowutils.DNSRec {
 		// Answer not an IP addr, throwing away
 		return nil
 	}
-	return &flowutils.DNSRec{
+	ret := &flowutils.DNSRec{
 		TransId: f.DnsTransactionID,
 		Query:   f.DnsQName,
 		Answer:  []*netip.Addr{&ipAnswer},
 		TTL:     []*uint{f.DNSTTL},
 	}
+	if f.DNSQType != nil {
+		qtype := ipproto.RRTypeFromNum(uint16(*f.DNSQType))
+		qtype_name := qtype.GetName()
+		ret.QType = &qtype_name
+	}
+	return ret
 }
 
 func (f *IpfixprobeFlow) GetGranefHTTPRec() *flowutils.HTTPRec {
@@ -98,11 +106,19 @@ func (f *IpfixprobeFlow) GetGranefHTTPRec() *flowutils.HTTPRec {
 	case *f.HTTPUrl == "":
 		return nil
 	}
-	return &flowutils.HTTPRec{
+
+	ret := &flowutils.HTTPRec{
 		Hostname:  f.HTTPHost,
 		Url:       f.HTTPUrl,
 		UserAgent: f.HTTPUserAgent,
 	}
+	if f.HTTPMethod != nil {
+		ret.Method = f.HTTPMethod
+	}
+	if f.HTTPStatusCode != nil {
+		ret.StatusCode = *f.HTTPStatusCode
+	}
+	return ret
 }
 
 func (f *IpfixprobeFlow) GetFirstTs() time.Time {

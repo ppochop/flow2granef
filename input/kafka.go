@@ -39,7 +39,7 @@ func InitKafkaConsumer(config InputConfig, stats InputStats) (Input, error) {
 		"bootstrap.servers":    kC.BootstrapServers,
 		"group.id":             kC.GroupId,
 		"max.poll.interval.ms": 80000000,
-		//"auto.offset.reset": "latest",
+		"auto.offset.reset":    "earliest",
 	})
 	if err != nil {
 		return nil, err

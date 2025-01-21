@@ -37,9 +37,10 @@ func BuildDnsTxn(d *flowutils.DNSRec, flowXid string, dnsXid string) *api.Reques
 		uid(Dns) <dgraph.type> "DNS" .
 		uid(Dns) <DNS.xid> "%s" .
 		uid(Dns) <DNS.trans_id> "%d" .
+		uid(Dns) <DNS.qtype_name> "%s" .
 		uid(Dns) <DNS.query> uid(Hostname) .
 %s
-	`, dnsXid, *d.TransId, dMAux)
+	`, dnsXid, *d.TransId, *d.QType, dMAux)
 	hostMutations := hMAux
 	flowMutations := `uid(Flow) <FlowRec.produced> uid(Dns) .`
 	dMu := &api.Mutation{

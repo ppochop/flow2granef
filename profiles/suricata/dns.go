@@ -24,6 +24,7 @@ type SuricataDnsInfo struct {
 	Id      uint16 `json:"id"`
 	RCode   string `json:"rcode"`
 	RRName  string `json:"rrname"`
+	RRType  string `json:"rrtype"`
 	//Queries []SuricataDnsQuery  `json:"queries"`
 	Answers []SuricataDnsAnswer `json:"answers"`
 }
@@ -32,6 +33,7 @@ func (s *SuricataDnsInfo) GetGranefDNSRec() *flowutils.DNSRec {
 	ret := &flowutils.DNSRec{
 		TransId: &s.Id,
 		Query:   &s.RRName,
+		QType:   &s.RRType,
 	}
 	for _, ans := range s.Answers {
 		if ans.RRtype != "A" && ans.RRtype != "AAAA" {

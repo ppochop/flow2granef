@@ -7,4 +7,5 @@ type DNSRec struct {
 	Query   *string
 	Answer  []*netip.Addr
 	TTL     []*uint
+	QType   *string
 }

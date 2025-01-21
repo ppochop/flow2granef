@@ -42,8 +42,8 @@ Host.user_agent: [uid] @reverse .
 
 FlowRec.id: string @upsert @index(exact) .
 FlowRec.community_id: string @index(hash) .
-FlowRec.originated_by: uid @reverse .
-FlowRec.received_by: uid @reverse .
+FlowRec.originated_by: [uid] @reverse .
+FlowRec.received_by: [uid] @reverse .
 FlowRec.orig_port: int .
 FlowRec.recv_port: int .
 FlowRec.from_orig_bytes: int .
@@ -62,10 +62,13 @@ DNS.xid: string @upsert @index(exact) .
 DNS.trans_id: int @index(int) .
 DNS.query: [uid] @count @reverse .
 DNS.answer: [uid] @count @reverse .
+DNS.qtype_name: string @index(exact) .
 
 HTTP.url: string @index(hash, trigram) .
 HTTP.path: string @index(hash) .
 HTTP.hostname: [uid] @reverse .
+HTTP.method: string @index(exact) .
+HTTP.status_code: int .
 HTTP.user_agent: [uid] @reverse .
 
 UserAgent.user_agent: string @upsert @index(exact) .
@@ -107,6 +110,8 @@ type HTTP {
     HTTP.hostname
     HTTP.url
     HTTP.path
+    HTTP.method
+    HTTP.status_code
 }
 
 type DNS {
@@ -115,6 +120,7 @@ type DNS {
     DNS.trans_id
     DNS.query
     DNS.answer
+    DNS.qtype_name
 }
 
 type UserAgent {

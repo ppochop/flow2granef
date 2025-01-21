@@ -29,5 +29,8 @@ func (z *ZeekDns) GetGranefDNSRec() *flowutils.DNSRec {
 		TTLuint := uint(z.TTLs[i])
 		ret.TTL = append(ret.TTL, &TTLuint)
 	}
+	if z.QType != nil {
+		ret.QType = z.QType
+	}
 	return ret
 }

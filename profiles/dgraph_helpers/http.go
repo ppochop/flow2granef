@@ -58,10 +58,12 @@ func buildHttpTxn(h *flowutils.HTTPRec, flowXid string, url *string, path *strin
 		<_:http> <dgraph.type> "HTTP" .
 		<_:http> <HTTP.url> "%s" .
 		<_:http> <HTTP.path> "%s" .
+		<_:http> <HTTP.method> "%s" .
+		<_:http> <HTTP.status_code> "%d" .
 		<_:http> <HTTP.hostname> uid(Hostname) .
 		<_:http> <HTTP.user_agent> uid(UA) .
 		uid(Flow) <FlowRec.produced> <_:http> .
-	`, *url, *path)
+	`, *url, *path, *h.Method, h.StatusCode)
 
 	httpM := &api.Mutation{
 		SetNquads: []byte(httpMutation),
