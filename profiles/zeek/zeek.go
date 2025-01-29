@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/dgraph-io/dgo/v240"
 	"github.com/ppochop/flow2granef/flowutils"
@@ -131,6 +132,7 @@ func (z *ZeekTransformer) Handle(ctx context.Context, data []byte) error {
 	zType := zeekBase.decideType()
 	switch zType {
 	case ZeekLogConn:
+		defer profiles.TimeTrack(time.Now(), z.stats.ProcessingTimeFlow)
 		event := ZeekConn{}
 		err = json.Unmarshal(data, &event)
 		if err != nil {
@@ -138,6 +140,7 @@ func (z *ZeekTransformer) Handle(ctx context.Context, data []byte) error {
 		}
 		err = z.handleFlow(ctx, &event)
 	case ZeekLogDns:
+		defer profiles.TimeTrack(time.Now(), z.stats.ProcessingTimeDns)
 		eventDns := ZeekDns{}
 		eventConnL := ZeekConnLimited{}
 		err = json.Unmarshal(data, &eventDns)
@@ -151,6 +154,7 @@ func (z *ZeekTransformer) Handle(ctx context.Context, data []byte) error {
 		err = z.handleDns(ctx, &eventDns, &eventConnL)
 
 	case ZeekLogHttp:
+		defer profiles.TimeTrack(time.Now(), z.stats.ProcessingTimeHttp)
 		eventHttp := ZeekHttp{}
 		eventConnL := ZeekConnLimited{}
 		err = json.Unmarshal(data, &eventHttp)

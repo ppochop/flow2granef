@@ -27,6 +27,17 @@ func createTransformCounterVec(name string, help string) *prometheus.CounterVec 
 	return createCounterVec(name, help, []string{"transformer", "thread"})
 }
 
+func createTransformHistogramVec(name string, help string) *prometheus.HistogramVec {
+	return promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    name,
+			Help:    help,
+			Buckets: []float64{1, 10, 50, 100, 500, 1000, 5000, 10000},
+		},
+		[]string{"transformer", "type"},
+	)
+}
+
 func CreateInputStats(inputs map[string]SourceConfig) map[string]input.InputStats {
 	ret := map[string]input.InputStats{}
 	msgsConsumed := createInputCounterVec(
@@ -103,7 +114,10 @@ func CreateTransformerStats(inputs map[string]SourceConfig) map[string][]profile
 		"transform_repeatedtxn_hosts",
 		"Number of hardfailed (given up) transactions of hosts by the transformer",
 	)
-
+	processTime := createTransformHistogramVec(
+		"event_processing_time",
+		"Amount of time it takes to process an event.",
+	)
 	for key, source := range inputs {
 		for i := 0; i < int(source.WorkersNum); i++ {
 			thread_id := fmt.Sprintf("#%d", i)
@@ -123,6 +137,9 @@ func CreateTransformerStats(inputs map[string]SourceConfig) map[string][]profile
 				HardfailedTxnDns:       hardfailedTxnDns.WithLabelValues(key, thread_id),
 				HardfailedTxnHttp:      hardfailedTxnHttp.WithLabelValues(key, thread_id),
 				RepeatedTxnHosts:       repeatedTxnHosts.WithLabelValues(key, thread_id),
+				ProcessingTimeFlow:     processTime.WithLabelValues(key, "flow"),
+				ProcessingTimeHttp:     processTime.WithLabelValues(key, "http"),
+				ProcessingTimeDns:      processTime.WithLabelValues(key, "dns"),
 			})
 		}
 	}

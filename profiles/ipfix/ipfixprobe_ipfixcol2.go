@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strconv"
+	"time"
 
 	"github.com/dgraph-io/dgo/v240"
 	"github.com/ppochop/flow2granef/flowutils"
@@ -86,15 +87,18 @@ func (s *IpfixprobeTransformer) Handle(ctx context.Context, data []byte) error {
 			xid = foundXid
 		}
 	}
+	defer profiles.TimeTrack(time.Now(), s.stats.ProcessingTimeFlow)
 	err = dgraphhelpers.HandleFlow(ctx, s.dgoClient, flow, xid, hit, &s.stats)
 	switch {
 	case event.IsDnsAnswer():
+		defer profiles.TimeTrack(time.Now(), s.stats.ProcessingTimeDns)
 		dns := event.GetGranefDNSRec()
 		if dns == nil {
 			return nil
 		}
 		err = dgraphhelpers.HandleDns(ctx, s.dgoClient, dns, xid, &s.stats)
 	case event.HTTPHost != nil:
+		defer profiles.TimeTrack(time.Now(), s.stats.ProcessingTimeHttp)
 		http := event.GetGranefHTTPRec()
 		if http == nil {
 			return nil

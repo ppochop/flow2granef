@@ -19,6 +19,9 @@ import (
 func AttemptTxn(ctx context.Context, dC *dgo.Dgraph, req *api.Request, incCtr bool, softfailCtr prometheus.Counter, attempts int) error {
 	var err error
 	for i := 1; i <= attempts; i++ {
+		if i != 1 {
+			time.Sleep(time.Millisecond * time.Duration(i*10*(1+rand.Intn(10))))
+		}
 		txn := dC.NewTxn()
 		defer txn.Discard(ctx)
 		_, err = txn.Do(ctx, req)
@@ -28,7 +31,6 @@ func AttemptTxn(ctx context.Context, dC *dgo.Dgraph, req *api.Request, incCtr bo
 		if incCtr {
 			softfailCtr.Inc()
 		}
-		time.Sleep(time.Millisecond * time.Duration(i*10*(1+rand.Intn(10))))
 	}
 	return err
 }

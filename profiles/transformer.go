@@ -2,6 +2,7 @@ package profiles
 
 import (
 	"context"
+	"time"
 
 	"github.com/dgraph-io/dgo/v240"
 	xidcache "github.com/ppochop/flow2granef/xid-cache"
@@ -24,6 +25,9 @@ type TransformerStats struct {
 	HardfailedTxnDns       prometheus.Counter
 	HardfailedTxnHttp      prometheus.Counter
 	RepeatedTxnHosts       prometheus.Counter
+	ProcessingTimeFlow     prometheus.Observer
+	ProcessingTimeHttp     prometheus.Observer
+	ProcessingTimeDns      prometheus.Observer
 }
 
 type TransformerFactory func(*xidcache.IdCache, *dgo.Dgraph, TransformerStats) Transformer
@@ -31,4 +35,9 @@ type TransformerDuplCheckFactory func(*xidcache.DuplCache, string) Transformer
 
 type Transformer interface {
 	Handle(ctx context.Context, flow []byte) error
+}
+
+func TimeTrack(start time.Time, obs prometheus.Observer) {
+	elapsed := time.Since(start).Milliseconds()
+	obs.Observe(float64(elapsed))
 }

@@ -31,6 +31,9 @@ func (z *ZeekDns) GetGranefDNSRec() *flowutils.DNSRec {
 	}
 	if z.QType != nil {
 		ret.QType = z.QType
+	} else {
+		qtype := "?"
+		ret.QType = &qtype
 	}
 	return ret
 }

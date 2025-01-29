@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/dgraph-io/dgo/v240"
 	"github.com/ppochop/flow2granef/flowutils"
@@ -127,10 +128,13 @@ func (s *SuricataTransformer) Handle(ctx context.Context, data []byte) error {
 	s.stats.EventsProcessed.Inc()
 	switch event.DetermineEventType() {
 	case SuricataEventFlow:
+		defer profiles.TimeTrack(time.Now(), s.stats.ProcessingTimeFlow)
 		err = s.handleFlow(ctx, &event)
 	case SuricataEventDns:
+		defer profiles.TimeTrack(time.Now(), s.stats.ProcessingTimeDns)
 		err = s.handleDns(ctx, &event)
 	case SuricataEventHttp:
+		defer profiles.TimeTrack(time.Now(), s.stats.ProcessingTimeHttp)
 		err = s.handleHttp(ctx, &event)
 	default:
 		return fmt.Errorf("unsupported suricata event type: %s", event.EventType)
