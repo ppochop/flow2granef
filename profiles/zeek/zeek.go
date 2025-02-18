@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/dgraph-io/dgo/v240"
+	dgraphhelpers "github.com/ppochop/flow2granef/dgraph-helpers"
 	"github.com/ppochop/flow2granef/flowutils"
 	ipproto "github.com/ppochop/flow2granef/ip-proto"
 	"github.com/ppochop/flow2granef/profiles"
-	dgraphhelpers "github.com/ppochop/flow2granef/profiles/dgraph_helpers"
 	xidcache "github.com/ppochop/flow2granef/xid-cache"
 	"github.com/satta/gommunityid"
 )

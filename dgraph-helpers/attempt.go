@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/netip"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/dgo/v240"
@@ -44,10 +45,19 @@ func AttemptHostsTxn(ctx context.Context, dC *dgo.Dgraph, ip1 *netip.Addr, ip2 *
 		// In case only one of them exists, the other one's creation was aborted with the transaction
 		// We have no way to know what the case is so the sane thing is to retry the upsert for each
 		// host individually
-		req1 := buildIpTxn(ip1)
-		req2 := buildIpTxn(ip2)
-		AttemptTxn(ctx, dC, req1, false, softfailCtr, 3)
-		AttemptTxn(ctx, dC, req2, false, softfailCtr, 3)
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			req1 := buildIpTxn(ip1)
+			AttemptTxn(ctx, dC, req1, false, softfailCtr, 3)
+		}()
+		go func() {
+			defer wg.Done()
+			req2 := buildIpTxn(ip2)
+			AttemptTxn(ctx, dC, req2, false, softfailCtr, 3)
+		}()
+		wg.Wait()
 		return fmt.Errorf("hosts upsert retried")
 	}
 	return nil
@@ -78,16 +88,25 @@ func HandleFlow(ctx context.Context, dC *dgo.Dgraph, f *flowutils.FlowRec, xid s
 }
 
 func HandleDns(ctx context.Context, dC *dgo.Dgraph, d *flowutils.DNSRec, flowXid string, stats *profiles.TransformerStats) error {
-	reqHostname := buildHostnameTxn(d.Query)
-	AttemptTxn(ctx, dC, reqHostname, true, stats.SoftfailedTxnHostname, 1)
+	var wg sync.WaitGroup
+	wg.Add(1 + len(d.Answer))
+
+	go func() {
+		defer wg.Done()
+		reqHostname := buildHostnameTxn(d.Query)
+		AttemptTxn(ctx, dC, reqHostname, true, stats.SoftfailedTxnHostname, 1)
+	}()
 
 	for _, ip := range d.Answer {
-		reqHost := buildIpTxn(ip)
-		AttemptTxn(ctx, dC, reqHost, true, stats.SoftfailedTxnHosts, 5)
+		go func() {
+			defer wg.Done()
+			reqHost := buildIpTxn(ip)
+			AttemptTxn(ctx, dC, reqHost, true, stats.SoftfailedTxnHosts, 1)
+		}()
 	}
-
 	dnsXid := fmt.Sprintf("%s%d", flowXid, *d.TransId)
 	reqDns := BuildDnsTxn(d, flowXid, dnsXid)
+	wg.Wait()
 	err := AttemptTxn(ctx, dC, reqDns, true, stats.SoftfailedTxnDns, 10)
 	if err != nil {
 		stats.HardfailedTxnDns.Inc()
@@ -106,17 +125,28 @@ func HandleDnsWithFlowPlaceholder(ctx context.Context, dC *dgo.Dgraph, d *flowut
 }
 
 func HandleHttp(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowXid string, stats *profiles.TransformerStats) error {
-	AttemptHostsTxn(ctx, dC, h.ClientIp, h.ServerIp, stats.SoftfailedTxnHosts)
+	var wg sync.WaitGroup
+	wg.Add(3)
 
-	reqHostname := buildHostnameTxn(h.Hostname)
-	AttemptTxn(ctx, dC, reqHostname, true, stats.SoftfailedTxnHostname, 1)
+	go func() {
+		defer wg.Done()
+		reqHostname := buildHostnameTxn(h.Hostname)
+		AttemptTxn(ctx, dC, reqHostname, true, stats.SoftfailedTxnHostname, 1)
+	}()
 
-	reqUA := buildUserAgentTxn(h.UserAgent)
-	AttemptTxn(ctx, dC, reqUA, true, stats.SoftfailedTxnUserAgent, 1)
+	go func() {
+		defer wg.Done()
+		reqUA := buildUserAgentTxn(h.UserAgent)
+		AttemptTxn(ctx, dC, reqUA, true, stats.SoftfailedTxnUserAgent, 1)
+	}()
 
-	reqHostsEdges := buildHttpHostsEdges(h)
-	AttemptTxn(ctx, dC, reqHostsEdges, false, stats.SoftfailedTxnHosts, 5)
+	go func() {
+		defer wg.Done()
+		reqHostsEdges := buildHttpHostsEdges(h)
+		AttemptTxn(ctx, dC, reqHostsEdges, false, stats.SoftfailedTxnHosts, 1)
+	}()
 
+	wg.Wait()
 	url, path := handleUrl(h.Url)
 	reqHTTP := buildHttpTxn(h, flowXid, url, path)
 	err := AttemptTxn(ctx, dC, reqHTTP, true, stats.SoftfailedTxnHttp, 10)
@@ -130,8 +160,19 @@ func HandleHttp(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowX
 }
 
 func HandleHttpWithFlowPlaceholder(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowXid string, stats *profiles.TransformerStats) error {
-	reqFlowPlaceholder := buildFlowRecPlaceholderTxn(flowXid)
-	AttemptTxn(ctx, dC, reqFlowPlaceholder, true, stats.SoftfailedTxnFlows, 1)
-	AttemptHostsTxn(ctx, dC, h.ClientIp, h.ServerIp, stats.SoftfailedTxnHosts)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		reqFlowPlaceholder := buildFlowRecPlaceholderTxn(flowXid)
+		AttemptTxn(ctx, dC, reqFlowPlaceholder, true, stats.SoftfailedTxnFlows, 1)
+	}()
+
+	go func() {
+		defer wg.Done()
+		AttemptHostsTxn(ctx, dC, h.ClientIp, h.ServerIp, stats.SoftfailedTxnHosts)
+	}()
+	wg.Wait()
 	return HandleHttp(ctx, dC, h, flowXid, stats)
 }
