@@ -7,7 +7,7 @@ import (
 	"github.com/ppochop/flow2granef/flowutils"
 )
 
-type SuricataFlowBypassedInfo struct {
+type BypassedInfo struct {
 	PktsToServer  uint64 `json:"pkts_toserver"`
 	PktsToClient  uint64 `json:"pkts_toclient"`
 	BytesToServer uint64 `json:"bytes_toserver"`
@@ -15,15 +15,15 @@ type SuricataFlowBypassedInfo struct {
 }
 
 type SuricataFlowInfo struct {
-	PktsToServer  uint64                    `json:"pkts_toserver"`
-	PktsToClient  uint64                    `json:"pkts_toclient"`
-	BytesToServer uint64                    `json:"bytes_toserver"`
-	BytesToClient uint64                    `json:"bytes_toclient"`
-	Start         SuriTime                  `json:"start"`
-	End           SuriTime                  `json:"end"`
-	Age           uint                      `json:"age"`
-	Bypassed      *SuricataFlowBypassedInfo `json:"bypassed"`
-	Reason        string                    `json:"reason"`
+	PktsToServer  uint64        `json:"pkts_toserver"`
+	PktsToClient  uint64        `json:"pkts_toclient"`
+	BytesToServer uint64        `json:"bytes_toserver"`
+	BytesToClient uint64        `json:"bytes_toclient"`
+	Start         SuriTime      `json:"start"`
+	End           SuriTime      `json:"end"`
+	Age           uint          `json:"age"`
+	Bypassed      *BypassedInfo `json:"bypassed"`
+	Reason        string        `json:"reason"`
 }
 
 type SuriTime struct {

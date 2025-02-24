@@ -18,23 +18,18 @@ const (
 )
 
 type SuricataEve struct {
-	Timestamp    SuriTime          `json:"timestamp"`
-	FlowId       uint64            `json:"flow_id"`
-	EventType    string            `json:"event_type"`
-	SrcIp        netip.Addr        `json:"src_ip"`
-	SrcPort      uint16            `json:"src_port"`
-	DestIp       netip.Addr        `json:"dest_ip"`
-	DestPort     uint16            `json:"dest_port"`
-	Proto        string            `json:"proto"`
-	AppProto     string            `json:"app_proto"`
-	IcmpType     *uint8            `json:"icmp_type"`
-	IcmpCode     *uint8            `json:"icmp_code"`
-	IcmpRespType *uint8            `json:"response_icmp_type"`
-	IcmpRespCode *uint8            `json:"response_icmp_code"`
-	Flow         *SuricataFlowInfo `json:"flow"`
-	Dns          *SuricataDnsInfo  `json:"dns"`
-	Http         *SuricataHttp     `json:"http"`
-	Vlan         []uint16          `json:"vlan"`
+	Timestamp SuriTime          `json:"timestamp"`
+	FlowId    uint64            `json:"flow_id"`
+	EventType string            `json:"event_type"`
+	SrcIp     netip.Addr        `json:"src_ip"`
+	SrcPort   uint16            `json:"src_port"`
+	DestIp    netip.Addr        `json:"dest_ip"`
+	DestPort  uint16            `json:"dest_port"`
+	Proto     string            `json:"proto"`
+	AppProto  string            `json:"app_proto"`
+	Flow      *SuricataFlowInfo `json:"flow"`
+	Dns       *SuricataDnsInfo  `json:"dns"`
+	Http      *SuricataHttpInfo `json:"http"`
 }
 
 func (s *SuricataEve) DetermineEventType() SuricataEventType {

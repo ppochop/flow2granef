@@ -9,39 +9,34 @@ import (
 )
 
 type IpfixprobeFlow struct {
-	SrcIp                *netip.Addr
-	SrcIp4               *netip.Addr `json:"iana:sourceIPv4Address"`
-	SrcIp6               *netip.Addr `json:"iana:sourceIPv6Address"`
-	SrcPort              uint16      `json:"iana:sourceTransportPort"`
-	DestIp               *netip.Addr
-	DestIp4              *netip.Addr `json:"iana:destinationIPv4Address"`
-	DestIp6              *netip.Addr `json:"iana:destinationIPv6Address"`
-	DestPort             uint16      `json:"iana:destinationTransportPort"`
-	Proto                string      `json:"iana:protocolIdentifier"`
-	IpVersion            uint8       `json:"iana:ipVersion"`
-	FlowStartMs          time.Time   `json:"iana:flowStartMicroseconds"`
-	FlowEndMs            time.Time   `json:"iana:flowEndMicroseconds"`
-	FlowId               uint64      `json:"iana:flowId"`
-	Pkts                 uint64      `json:"iana:packetDeltaCount"`
-	PktsReverse          uint64      `json:"iana@reverse:packetDeltaCount@reverse"`
-	Bytes                uint64      `json:"iana:octetDeltaCount"`
-	BytesReverse         uint64      `json:"iana@reverse:octetDeltaCount@reverse"`
-	FlowEndReason        int         `json:"iana:flowEndReason"`
-	IcmpTypeCode4        *uint16     `json:"iana:icmpTypeCodeIPv4"`
-	IcmpTypeCode4Reverse *uint16     `json:"iana@reverse:icmpTypeCodeIPv4@reverse"`
-	IcmpTypeCode6        *uint16     `json:"iana:icmpTypeCodeIPv6"`
-	IcmpTypeCode6Reverse *uint16     `json:"iana@reverse:icmpTypeCodeIPv6@reverse"`
-	Vlan                 *uint16     `json:"iana:vlanId"`
-	DnsTransactionID     *uint16     `json:"cesnet:DNSTransactionID"`
-	DnsQName             *string     `json:"cesnet:DNSName"`
-	DNSQType             *uint       `json:"cesnet:DNSQType"`
-	DNSAnswer            *string     `json:"cesnet:DNSRData"`
-	DNSTTL               *uint       `json:"cesnet:DNSRRTTL"`
-	HTTPUserAgent        *string     `json:"flowmon:httpUserAgent"`
-	HTTPUrl              *string     `json:"flowmon:httpUrl"`
-	HTTPHost             *string     `json:"flowmon:httpHost"`
-	HTTPStatusCode       *uint16     `json:"flowmon:httpStatusCode"`
-	HTTPMethod           *string     `json:"flowmon:httpMethod"`
+	SrcIp            *netip.Addr
+	SrcIp4           *netip.Addr `json:"iana:sourceIPv4Address"`
+	SrcIp6           *netip.Addr `json:"iana:sourceIPv6Address"`
+	SrcPort          uint16      `json:"iana:sourceTransportPort"`
+	DestIp           *netip.Addr
+	DestIp4          *netip.Addr `json:"iana:destinationIPv4Address"`
+	DestIp6          *netip.Addr `json:"iana:destinationIPv6Address"`
+	DestPort         uint16      `json:"iana:destinationTransportPort"`
+	Proto            string      `json:"iana:protocolIdentifier"`
+	IpVersion        uint8       `json:"iana:ipVersion"`
+	FlowStartMs      time.Time   `json:"iana:flowStartMicroseconds"`
+	FlowEndMs        time.Time   `json:"iana:flowEndMicroseconds"`
+	FlowId           uint64      `json:"iana:flowId"`
+	Pkts             uint64      `json:"iana:packetDeltaCount"`
+	PktsReverse      uint64      `json:"iana@reverse:packetDeltaCount@reverse"`
+	Bytes            uint64      `json:"iana:octetDeltaCount"`
+	BytesReverse     uint64      `json:"iana@reverse:octetDeltaCount@reverse"`
+	FlowEndReason    int         `json:"iana:flowEndReason"`
+	DnsTransactionID *uint16     `json:"cesnet:DNSTransactionID"`
+	DnsQName         *string     `json:"cesnet:DNSName"`
+	DNSQType         *uint       `json:"cesnet:DNSQType"`
+	DNSAnswer        *string     `json:"cesnet:DNSRData"`
+	DNSTTL           *uint       `json:"cesnet:DNSRRTTL"`
+	HTTPUserAgent    *string     `json:"flowmon:httpUserAgent"`
+	HTTPUrl          *string     `json:"flowmon:httpUrl"`
+	HTTPHost         *string     `json:"flowmon:httpHost"`
+	HTTPStatusCode   *uint16     `json:"flowmon:httpStatusCode"`
+	HTTPMethod       *string     `json:"flowmon:httpMethod"`
 }
 
 func (f *IpfixprobeFlow) GetGranefFlowRec(source string) *flowutils.FlowRec {

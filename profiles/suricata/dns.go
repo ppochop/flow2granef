@@ -19,13 +19,12 @@ type SuricataDnsAnswer struct {
 }
 
 type SuricataDnsInfo struct {
-	Version uint   `json:"version"`
-	Type    string `json:"type"`
-	Id      uint16 `json:"id"`
-	RCode   string `json:"rcode"`
-	RRName  string `json:"rrname"`
-	RRType  string `json:"rrtype"`
-	//Queries []SuricataDnsQuery  `json:"queries"`
+	Version uint                `json:"version"`
+	Type    string              `json:"type"`
+	Id      uint16              `json:"id"`
+	RCode   string              `json:"rcode"`
+	RRName  string              `json:"rrname"`
+	RRType  string              `json:"rrtype"`
 	Answers []SuricataDnsAnswer `json:"answers"`
 }
 

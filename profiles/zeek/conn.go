@@ -24,8 +24,6 @@ type ZeekConn struct {
 	RespPkts  uint64     `json:"resp_pkts"`
 	RespBytes uint64     `json:"resp_ip_bytes"`
 	ConnState string     `json:"conn_state"`
-	OuterVlan *uint16    `json:"vlan"`
-	InnerVlan *uint16    `json:"inner_vlan"`
 }
 
 type ZeekConnLimited struct {

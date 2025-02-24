@@ -11,18 +11,13 @@ const (
 
 type ZeekBase struct {
 	Uid string `json:"uid"`
-	// Conn.log stuff
-	//Service string `json:"service"`
+	// Conn.log determinant
 	OrigPkts *int `json:"orig_pkts"`
-
-	// Http.log stuff
-	//UserAgent string `json:"user_agent"`
+	// Http.log determinant
 	Method     *string `json:"method"`
 	StatusCode *int    `json:"status_code"`
-
-	// Dns.log stuff
+	// Dns.log determinant
 	TransId *uint16 `json:"trans_id"`
-	//RCode int `json:"rcode"`
 }
 
 func (z *ZeekBase) decideType() ZeekLogType {

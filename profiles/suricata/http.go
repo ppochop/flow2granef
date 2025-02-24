@@ -2,7 +2,7 @@ package suricata
 
 import "github.com/ppochop/flow2granef/flowutils"
 
-type SuricataHttp struct {
+type SuricataHttpInfo struct {
 	Hostname   string `json:"hostname"`
 	Url        string `json:"url"`
 	UserAgent  string `json:"http_user_agent"`
@@ -10,7 +10,7 @@ type SuricataHttp struct {
 	StatusCode uint16 `json:"status"`
 }
 
-func (s *SuricataHttp) GetGranefHTTPRec() *flowutils.HTTPRec {
+func (s *SuricataHttpInfo) GetGranefHTTPRec() *flowutils.HTTPRec {
 	return &flowutils.HTTPRec{
 		Hostname:   &s.Hostname,
 		Url:        &s.Url,
