@@ -1,3 +1,4 @@
+// package suricata provides a handler for the Suricata source of events.
 package suricata
 
 import (
@@ -32,7 +33,6 @@ type SuricataTransformerDuplCheck struct {
 }
 
 func init() {
-	profiles.RegisterPreHandler("suricata", PreHandle)
 	profiles.RegisterTransformer("suricata", InitSuricataTransformer)
 	profiles.RegisterDuplCheckTransformer("suricata", InitSuricataTransformerDuplCheck)
 }

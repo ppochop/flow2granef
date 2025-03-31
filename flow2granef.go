@@ -1,3 +1,10 @@
+/*
+Flow2granef ingests network flows and related network security monitoring events into a Dgraph (graph) database.
+
+Usage:
+
+	flow2granef --config=config.toml
+*/
 package main
 
 import (
@@ -20,13 +27,6 @@ import (
 	xidcache "github.com/ppochop/flow2granef/xid-cache"
 )
 
-/*
-var flowSource string
-var workersNum uint
-var in string
-var passiveTimeout time.Duration
-var duplCheck bool
-*/
 var configPath string
 
 func init() {
@@ -48,6 +48,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// setup Ctrl+C
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -57,10 +58,11 @@ func main() {
 		defer cancel()
 	}()
 
+	// setup caches
 	duplCache := xidcache.NewDuplCache(30 * time.Minute)
-
 	cache := xidcache.New(passiveTimeout.Round(time.Second))
 
+	// connect to dgraph
 	dgoClient := newClient(mC.DgraphAddress)
 
 	if mC.ResetDgraph {
@@ -72,9 +74,13 @@ func main() {
 	transformers := map[string]profiles.Transformer{}
 	var wg sync.WaitGroup
 
+	// prepare prometheus metric update calls
 	inputsStats := CreateInputStats(mC.Sources)
 	transformersStats := CreateTransformerStats(mC.Sources)
+
+	// configure an input-reading worker for each source in the config
 	for key, source := range mC.Sources {
+
 		inputConfig := source.InputConfig
 		inputStats := inputsStats[key]
 		inputter, err := input.GetInput(source.InputName, inputConfig, inputStats)
@@ -93,9 +99,12 @@ func main() {
 
 			channels := [](chan []byte){}
 		*/
-		flows := make(chan []byte, 64)
+		flows := make(chan []byte, 64) // the channel between an inputter and related transformers
+		// configure the required number of transforming workers
 		for i := 0; i < int(source.WorkersNum); i++ {
 			var transformer profiles.Transformer
+
+			// select the right transformer for the configured mode of operation
 			if mC.DuplCheck {
 				transformer, err = profiles.GetTransformerDuplCheck(source.TransformerName, duplCache, key)
 			} else {
@@ -112,7 +121,7 @@ func main() {
 			transformers[fmt.Sprintf("%s:#%d", key, i)] = transformer
 
 			wg.Add(1)
-			slog.Info(fmt.Sprintf("Spawning worker %s:#%d", key, i))
+			slog.Info(fmt.Sprintf("Spawning transform worker %s:#%d", key, i))
 
 			go func(key string, index int) {
 				defer func() {
@@ -124,6 +133,8 @@ func main() {
 		}
 
 		wg.Add(1)
+		slog.Info(fmt.Sprintf("Spawning input worker %s", key))
+
 		go func(key string) {
 			defer func() {
 				slog.Info(fmt.Sprintf("Input worker %s finished", key))
@@ -136,6 +147,8 @@ func main() {
 	}
 
 	wg.Add(1)
+	slog.Info("Spawning stats worker")
+
 	go func() {
 		defer func() {
 			slog.Info("Stats worker finished.")

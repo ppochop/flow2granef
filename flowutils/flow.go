@@ -1,3 +1,4 @@
+// package flowutils provides type definitions for internal representation of supported event types.
 package flowutils
 
 import (

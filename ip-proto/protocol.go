@@ -1,3 +1,4 @@
+// package ipproto provides wrappers around relevant IANA mappings of field names to values.
 package ipproto
 
 import (

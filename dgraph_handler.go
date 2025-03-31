@@ -11,9 +11,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// newClient dials a gRPC connection to Dgraph.
 func newClient(address string) *dgo.Dgraph {
-	// Dial a gRPC connection. The address to dial to can be configured when
-	// setting up the dgraph cluster.
 	d, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
@@ -24,6 +23,7 @@ func newClient(address string) *dgo.Dgraph {
 	)
 }
 
+// reset resets the Dgraph database, deleting its content.
 func reset(ctx context.Context, c *dgo.Dgraph) {
 	err := c.Alter(ctx, &api.Operation{DropOp: api.Operation_ALL})
 	if err != nil {
@@ -32,6 +32,8 @@ func reset(ctx context.Context, c *dgo.Dgraph) {
 	}
 }
 
+// setup uploads the schema to the Dgraph database.
+// Hence, the schema/data model is defined here.
 func setup(ctx context.Context, c *dgo.Dgraph) {
 	err := c.Alter(ctx, &api.Operation{
 		Schema: `

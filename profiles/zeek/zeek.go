@@ -1,8 +1,5 @@
+// package zeek provides a handler for the Zeek source of events.
 package zeek
-
-/*
-Flow records made from Zeek's conn log will use Zeek's uid as xid in dgraph.
-*/
 
 import (
 	"context"
@@ -34,7 +31,6 @@ type ZeekTransformerDuplCheck struct {
 }
 
 func init() {
-	profiles.RegisterPreHandler("zeek", PreHandle)
 	profiles.RegisterTransformer("zeek", InitZeekTransformer)
 	profiles.RegisterDuplCheckTransformer("zeek", InitZeekTransformerDuplCheck)
 }

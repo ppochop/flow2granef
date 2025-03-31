@@ -9,11 +9,9 @@ import (
 
 type transformersRegistryType map[string]TransformerFactory
 type transformersDuplCheckRegistryType map[string]TransformerDuplCheckFactory
-type preHandlerRegistryType map[string]PreHandler
 
 var transformersRegistry = make(transformersRegistryType)
 var transformersDuplCheckRegistry = make(transformersDuplCheckRegistryType)
-var preHandlerRegistry = make(preHandlerRegistryType)
 
 func GetTransformer(fSType string, cache *xidcache.IdCache, dgoClient *dgo.Dgraph, stats TransformerStats) (Transformer, error) {
 	transformerFactory, found := transformersRegistry[fSType]
@@ -31,22 +29,10 @@ func GetTransformerDuplCheck(fSType string, cache *xidcache.DuplCache, instanceN
 	return transformerFactory(cache, instanceName), nil
 }
 
-func GetPreHandler(fSType string) (PreHandler, error) {
-	preHandler, found := preHandlerRegistry[fSType]
-	if !found {
-		return nil, fmt.Errorf("unknown profile %s", fSType)
-	}
-	return preHandler, nil
-}
-
 func RegisterTransformer(name string, tF TransformerFactory) {
 	transformersRegistry[name] = tF
 }
 
 func RegisterDuplCheckTransformer(name string, tF TransformerDuplCheckFactory) {
 	transformersDuplCheckRegistry[name] = tF
-}
-
-func RegisterPreHandler(name string, p PreHandler) {
-	preHandlerRegistry[name] = p
 }

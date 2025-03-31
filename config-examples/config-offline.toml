@@ -1,0 +1,26 @@
+# Example of a flow2granef config for a Suricata and Zeek file-based sources of events
+
+passive-timeout = "10m"
+dgraph-address = "dgraphhost:9080"
+
+# whether to delete the content of the Dgraph database before running
+reset-dgraph = false
+
+# whether to run in duplicate traffic detection mode
+duplicity-check = false
+
+[sources.suricata1]
+transformer = "suricata"
+input = "file"
+workers-num = 1
+
+[sources.suricata1.input-config]
+path = "/path/to/eve.json"
+
+[sources.zeek1]
+transformer = "zeek"
+input = "file"
+workers-num = 1
+
+[sources.zeek1.input-config]
+path = "/path/to/conn.log"

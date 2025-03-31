@@ -1,3 +1,4 @@
+// package input provides readers of events from different technical types of input.
 package input
 
 import "github.com/prometheus/client_golang/prometheus"

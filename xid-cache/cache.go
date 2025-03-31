@@ -1,13 +1,6 @@
+// Package xidcache provides a thread-safe mapping of the Community ID to relevant information about the related flow.
+// It allows flow2granef to work with flows from different sources, handle active timeouts and detect duplicity in monitored traffic.
 package xidcache
-
-/*
-Cache for tracking *only* actively timed out flows.
-
-The point is to have a a way to track flow records that can be modified
- because they have been actively timed out recently.
-
-This "freshness" of the active timeout is validated before returning the xid of the record.
-*/
 
 import (
 	"sync"

@@ -1,0 +1,20 @@
+# Example of a flow2granef config for a Suricata and Ipfixprobe/Ipfixcol2 kafka-based sources of events
+
+passive-timeout = "10m"
+dgraph-address = "dgraphhost:9080"
+
+# whether to delete the content of the Dgraph database before running
+reset-dgraph = true
+
+# whether to run in duplicate traffic detection mode
+duplicity-check = false
+
+[sources.ipfixprobe1]
+transformer = "ipfixprobe"
+input = "kafka"
+workers-num = 8
+
+[sources.ipfixprobe1.input-config]
+bootstrap-servers = "kafkahost:9092"
+group-id = "ipfixtest"
+topic = "ipfixtestlive"

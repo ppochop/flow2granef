@@ -1,3 +1,5 @@
+// package ipfix provides a handler for the IPFIX source of events.
+// For now, only events exported from ipfixcol2, collected from ipfixprobe, are supported.
 package ipfix
 
 import (
@@ -31,7 +33,6 @@ type IpfixprobeTransformerDuplCheck struct {
 func init() {
 	profiles.RegisterTransformer("ipfixprobe", InitIpfixprobeTransformer)
 	profiles.RegisterDuplCheckTransformer("ipfixprobe", InitIpfixprobeTransformerDuplCheck)
-	profiles.RegisterPreHandler("ipfixprobe", IpfixPreHandle)
 }
 
 func InitIpfixprobeTransformer(cache *xidcache.IdCache, dgoClient *dgo.Dgraph, stats profiles.TransformerStats) profiles.Transformer {

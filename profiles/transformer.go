@@ -1,3 +1,4 @@
+// Package profiles provides handlers for supported sources of network security monitoring events.
 package profiles
 
 import (

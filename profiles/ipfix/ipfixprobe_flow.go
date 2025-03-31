@@ -109,6 +109,9 @@ func (f *IpfixprobeFlow) GetGranefHTTPRec() *flowutils.HTTPRec {
 	}
 	if f.HTTPMethod != nil {
 		ret.Method = f.HTTPMethod
+	} else {
+		unknown := "?"
+		ret.Method = &unknown
 	}
 	if f.HTTPStatusCode != nil {
 		ret.StatusCode = *f.HTTPStatusCode

@@ -15,11 +15,8 @@ type FileInput struct {
 	msgsConsumed prometheus.Counter
 }
 
-//var FilePathIn string
-
 func init() {
 	RegisterInput("file", InitFileInput)
-	//flag.StringVar(&FilePathIn, "file-path-in", "", "Path to the file containing the input.")
 }
 
 type FileConfig struct {
@@ -43,7 +40,7 @@ func InitFileInput(config InputConfig, stats InputStats) (Input, error) {
 func (s *FileInput) NextEntry() ([]byte, error) {
 	if s.fileScanner.Scan() {
 		s.msgsConsumed.Inc()
-		return s.fileScanner.Bytes(), nil
+		return []byte(s.fileScanner.Text()), nil
 	}
 	err := s.fileScanner.Err()
 	if err != nil {

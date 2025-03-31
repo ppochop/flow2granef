@@ -1,3 +1,4 @@
+// package dgraphhelpers manages transactions to dgraph for event types from package flowutils.
 package dgraphhelpers
 
 import (
@@ -50,12 +51,12 @@ func AttemptHostsTxn(ctx context.Context, dC *dgo.Dgraph, ip1 *netip.Addr, ip2 *
 		go func() {
 			defer wg.Done()
 			req1 := buildIpTxn(ip1)
-			AttemptTxn(ctx, dC, req1, false, softfailCtr, 3)
+			AttemptTxn(ctx, dC, req1, false, softfailCtr, 1)
 		}()
 		go func() {
 			defer wg.Done()
 			req2 := buildIpTxn(ip2)
-			AttemptTxn(ctx, dC, req2, false, softfailCtr, 3)
+			AttemptTxn(ctx, dC, req2, false, softfailCtr, 1)
 		}()
 		wg.Wait()
 		return fmt.Errorf("hosts upsert retried")
@@ -126,7 +127,7 @@ func HandleDnsWithFlowPlaceholder(ctx context.Context, dC *dgo.Dgraph, d *flowut
 
 func HandleHttp(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowXid string, stats *profiles.TransformerStats) error {
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
@@ -140,11 +141,8 @@ func HandleHttp(ctx context.Context, dC *dgo.Dgraph, h *flowutils.HTTPRec, flowX
 		AttemptTxn(ctx, dC, reqUA, true, stats.SoftfailedTxnUserAgent, 1)
 	}()
 
-	go func() {
-		defer wg.Done()
-		reqHostsEdges := buildHttpHostsEdges(h)
-		AttemptTxn(ctx, dC, reqHostsEdges, false, stats.SoftfailedTxnHosts, 1)
-	}()
+	reqHostsEdges := buildHttpHostsEdges(h)
+	AttemptTxn(ctx, dC, reqHostsEdges, false, stats.SoftfailedTxnHosts, 1)
 
 	wg.Wait()
 	url, path := handleUrl(h.Url)
@@ -171,7 +169,10 @@ func HandleHttpWithFlowPlaceholder(ctx context.Context, dC *dgo.Dgraph, h *flowu
 
 	go func() {
 		defer wg.Done()
-		AttemptHostsTxn(ctx, dC, h.ClientIp, h.ServerIp, stats.SoftfailedTxnHosts)
+		err := AttemptHostsTxn(ctx, dC, h.ClientIp, h.ServerIp, stats.SoftfailedTxnHosts)
+		if err == nil {
+			stats.RepeatedTxnHosts.Inc()
+		}
 	}()
 	wg.Wait()
 	return HandleHttp(ctx, dC, h, flowXid, stats)

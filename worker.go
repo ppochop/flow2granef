@@ -10,6 +10,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// spawnTransformer is the working loop of a transform worker.
+// It reads from the flows channel and attempts to handle each event.
 func spawnTransformer(ctx context.Context, transformer profiles.Transformer, flows <-chan []byte) {
 	for {
 		select {
@@ -25,42 +27,8 @@ func spawnTransformer(ctx context.Context, transformer profiles.Transformer, flo
 	}
 }
 
-func sendToTransformPreHandle(ctx context.Context, input []byte, preHandler profiles.PreHandler, channels []chan []byte, workers_num uint32) {
-	worker_preid, err := preHandler(input)
-	if err != nil {
-		slog.Error("error during attempting to get ip pair id", "error", err)
-		return
-	}
-	worker_id := worker_preid % workers_num
-	select {
-	case <-ctx.Done():
-	case channels[worker_id] <- input:
-	}
-}
-
-func spawnInputter(ctx context.Context, inputter input.Input, preHandler profiles.PreHandler, channels [](chan []byte), workers_num uint32) {
-	gRoutines := make(chan struct{}, workers_num*4)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case gRoutines <- struct{}{}:
-			input, err := inputter.NextEntry()
-			if err != nil {
-				slog.Error("error during parsing input record", "error", err)
-				return
-			}
-			if input == nil {
-				continue
-			}
-			go func() {
-				sendToTransformPreHandle(ctx, input, preHandler, channels, workers_num)
-				<-gRoutines
-			}()
-		}
-	}
-}
-
+// spawnSimpleInputter is the working loop of an input worker.
+// It fetches encoded events from the inputter and feeds it to the flows channel.
 func spawnSimpleInputter(ctx context.Context, inputter input.Input, flows chan []byte) {
 	for {
 		select {
@@ -84,6 +52,7 @@ func spawnSimpleInputter(ctx context.Context, inputter input.Input, flows chan [
 	}
 }
 
+// spawnStatsWorker is responsible for handling the Prometheus metrics endpoint.
 func spawnStatsWorker(ctx context.Context) error {
 	srv := http.Server{
 		Addr: ":2112",
